@@ -1,0 +1,17 @@
+# 构建目录
+build/
+
+# 编译产物
+output/*
+!output/.gitkeep
+
+# kbuild 生成物（勿落入 board/driver 源码树）
+board/driver/*.mod.c
+board/driver/*.mod.o
+board/driver/*.ko
+board/driver/*.o
+board/driver/Module.symvers
+board/driver/modules.order
+
+*~
+.DS_Store

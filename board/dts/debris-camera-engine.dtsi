@@ -1,0 +1,27 @@
+/* debris-camera-engine.dtsi Phase 3 learning DT fragment
+ *
+ * Merge into board DTS and rebuild DTB, or load as an overlay.
+ * Driver compatible = "debris,camera-engine"
+ *
+ * Example (under board dts root):
+ *   #include "debris-camera-engine.dtsi"
+ */
+/ {
+	debris_camera: debris-camera {
+		compatible = "debris,camera-engine";
+		status = "okay";
+		debris,ring-size = <4>;
+		debris,frame-size = <128>;
+		debris,label = "duo-s-learning-camera";
+		/* Optional: button / PIR IRQ input (A20 = GPIO500) */
+		debris,gpio-btn = <500>;
+		/* Optional: MMIO region (uncomment when bound to real hardware) */
+		/* reg = <0x0 0x1000>; */
+		debris,i2c-adapter = <2>;
+		debris,sensor-addr = <0x36>;
+		debris,camera-count = <1>;
+		/* Second camera (when hardware wired): */
+		/* debris,cam1-i2c-adapter = <3>; */
+		/* debris,cam1-sensor-addr = <0x36>; */
+	};
+};

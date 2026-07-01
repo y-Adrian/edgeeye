@@ -1,0 +1,41 @@
+#!/bin/sh
+# 用法：
+#   ./deploy           上传 output/ 下所有产物 + scripts/ + stream/
+#   ./deploy debris.ko 只上传指定文件
+set -e
+
+BOARD_IP=192.168.42.1
+BOARD_USER=root
+BOARD_DIR=/root
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+OUT_DIR="$ROOT_DIR/output"
+SCRIPT_DIR="$ROOT_DIR/scripts"
+
+if [ -n "$1" ]; then
+    scp "$OUT_DIR/$1" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
+    exit 0
+fi
+
+FILES=$(find "$OUT_DIR" -maxdepth 1 -type f -not -name '.*')
+if [ -z "$FILES" ]; then
+    echo "output/ is empty, run make first"
+    exit 1
+fi
+
+scp $FILES "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
+for s in check_vendor_media.sh run_security.sh stop_security.sh install_autostart.sh \
+         motion_watch.sh stop_motion_watch.sh record_clip.sh setup_dual_camera.sh \
+         health_check.sh stability_6h.sh stop_motion_recorder.sh media_tools.sh \
+         verify_board.sh reset_single_camera.sh rtsp_preview_only.sh select_pq_bin.sh \
+         setup_mixed_dual_camera.sh rtsp_dual_mixed.sh \
+         rtsp_single_gc2083.sh rtsp_single_ov5647.sh rtsp_recover.sh rtsp_diagnose.sh \
+         test_single_cam.sh; do
+    if [ -f "$SCRIPT_DIR/$s" ]; then
+        scp "$SCRIPT_DIR/$s" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
+    fi
+done
+if [ -d "$OUT_DIR/stream" ]; then
+    ssh "$BOARD_USER@$BOARD_IP" "mkdir -p $BOARD_DIR/stream"
+    scp -r "$OUT_DIR/stream/"* "$BOARD_USER@$BOARD_IP:$BOARD_DIR/stream/"
+fi
+echo "deployed to $BOARD_USER@$BOARD_IP:$BOARD_DIR"

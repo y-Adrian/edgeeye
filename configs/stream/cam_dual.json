@@ -1,0 +1,25 @@
+{
+    "dev-num": 2,
+    "rtsp-port": 8554,
+    "buf1-blk-cnt": 4,
+    "vi-vpss-mode": 1,
+    "sensor-config-path": "/mnt/data/sensor_cfg.ini",
+    "video-src-info": [
+        {
+            "chn": 0,
+            "rtsp-url": "cam",
+            "buf-blk-cnt": 4,
+            "codec": "264",
+            "venc-bind-vpss": true,
+            "compress-mode": "tile"
+        },
+        {
+            "chn": 1,
+            "rtsp-url": "cam",
+            "buf-blk-cnt": 4,
+            "codec": "264",
+            "venc-bind-vpss": true,
+            "compress-mode": "tile"
+        }
+    ]
+}
