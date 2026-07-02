@@ -1,0 +1,14 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.path": "clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--clang-tidy=false",
+    "--header-insertion=never"
+  ],
+  "clangd.compileCommands": "${workspaceFolder}/compile_commands.json",
+  "files.associations": {
+    "*.h": "c",
+    "my_cam*.c": "c"
+  }
+}

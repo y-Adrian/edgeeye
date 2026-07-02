@@ -1,0 +1,17 @@
+{
+    "rtsp-port": 8554,
+    "vi-vpss-mode": 1,
+    "buf1-blk-cnt": 4,
+    "sensor-config-path": "/mnt/data/sensor_cfg.ini",
+    "enable-set-pq-bin": true,
+    "sdr-pq-bin-path": "/mnt/cfg/param/cvi_sdr_bin_GC2083",
+    "video-src-info": [{
+        "chn": 0,
+        "rtsp-url": "cam",
+        "buf-blk-cnt": 4,
+        "codec": "264",
+        "venc-bind-vpss": false,
+        "compress-mode": "tile",
+        "bitrate": 4096
+    }]
+}

@@ -62,19 +62,24 @@ make              # driver + 用户态 app + 打包 stream 配置
 
 ## 快速开始
 
-### 1. 单摄验证（已知可行）
+**双摄可用方案（2026-07-01 归档）：** 见 [`docs/CAMERA_BRINGUP_ARCHIVE.md`](docs/CAMERA_BRINGUP_ARCHIVE.md)
 
-- OV5647：`rtsp://192.168.42.1:8554/cam0`
-- GC2083：`rtsp://192.168.42.1:554/h264`（过渡方案）
+| 镜头 | URL | 板上脚本 |
+|------|-----|----------|
+| J1 GC2083 | `rtsp://192.168.42.1:554/h264` | `/root/preview_gc2083_554.sh` |
+| J2 OV5647 | `rtsp://192.168.42.1:8554/cam0` | `/root/rtsp_single_ov5647.sh` |
 
-### 2. 当前主线
+注意：**不能同时** 跑两路；切换前先停 `sample_vi` / `rtsp_server`。
 
-先继续 `docs/DEBUG_SESSION/DEBUG_SESSION_ISSUE002.md`，目标是让 GC2083 也走 `8554/cam0`。
+### 当前主线
+
+继续 ISSUE-003 / 修 GC2083 @ `8554`；归档见 `docs/DEBUG_SESSION/DEBUG_SESSION_ISSUE002.md`。
 
 ## 先读什么
 
 1. `docs/ONBOARDING.md`
-2. `docs/PRODUCT_FORM3.md`
+2. `docs/CAMERA_BRINGUP_ARCHIVE.md` — **双摄当前可用配方**
+3. `docs/PRODUCT_FORM3.md`
 3. `docs/PROJECT_STATUS.md`
 4. `docs/DEBUG_SESSION/INDEX.md`
 5. `docs/CAMERA_VERIFY.md`

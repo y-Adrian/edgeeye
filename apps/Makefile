@@ -14,10 +14,13 @@ SYNC_SRCS   := $(wildcard $(CURDIR)/sync/*.c)
 SYNC_BINS   := $(patsubst $(CURDIR)/sync/%.c,$(BUILD_DIR)/%,$(SYNC_SRCS))
 APP_BINS    := $(MOTION_BINS) $(SYNC_BINS)
 
-.PHONY: all clean install_stream
+.PHONY: all clean install_stream camera
 
-all: $(BUILD_DIR) $(APP_BINS) install_stream
+all: $(BUILD_DIR) $(APP_BINS) camera install_stream
 	@cp $(APP_BINS) $(OUT_DIR)/ 2>/dev/null || true
+
+camera:
+	$(MAKE) -C camera
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
@@ -39,5 +42,6 @@ install_stream:
 
 clean:
 	rm -rf $(BUILD_DIR)
-	@rm -f $(OUT_DIR)/motion_detect $(OUT_DIR)/motion_detect_v4l2 $(OUT_DIR)/motion_recorder $(OUT_DIR)/sync_probe 2>/dev/null || true
+	$(MAKE) -C camera clean 2>/dev/null || true
+	@rm -f $(OUT_DIR)/motion_detect $(OUT_DIR)/motion_detect_v4l2 $(OUT_DIR)/motion_recorder $(OUT_DIR)/sync_probe $(OUT_DIR)/my_cam_test 2>/dev/null || true
 	@rm -rf $(OUT_DIR)/stream 2>/dev/null || true

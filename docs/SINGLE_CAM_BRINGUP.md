@@ -1,5 +1,7 @@
 # 单摄逐步调通指南
 
+> ⚠️ **GC2083 请以 [CAMERA_BRINGUP_ARCHIVE.md](./CAMERA_BRINGUP_ARCHIVE.md) 为准**（`554/h264` + camera-test）。下文步骤一若写 `8554/cam0` + rtsp_server，对 GC2083 **已证不可用**（ISSUE-002）。
+
 > 本板硬件：**J1 = GC2083**（`i2c-3 / 0x37`），**J2 = OV5647**（`i2c-2 / 0x36`）。  
 > 双摄试失败后，务必先 **reboot**，再按本文 **一次只测一颗头**。  
 > 相关归档：[CAMERA_VERIFY.md](./CAMERA_VERIFY.md)
@@ -11,14 +13,16 @@
 
 ## 通则
 
-| 规则 | 原因 |
-|------|------|
-| 单摄时 `dev_num = 1` | 只启用一路传感器 |
-| 使用 `cam0.json` 启动 | 单路 RTSP，URL 为 `cam0` |
-| 勿用 `cam_dual.json` / `*_dual.ini` | 避免 `dev_num=2` 与单摄 JSON 不匹配导致黑屏 |
-| `sensor_cfg.ini` 与 `cvi_sdr_bin` 必须配对 | PQ 调参错误 → mismatch / 黑屏 |
-| 启动前先停 `rtsp_server` | 旧进程占用 VI/ISP，新配置不生效 |
-| 启动前 `rmmod debris` | 学习驱动与厂商管线抢传感器 |
+
+| 规则                                    | 原因                              |
+| ------------------------------------- | ------------------------------- |
+| 单摄时 `dev_num = 1`                     | 只启用一路传感器                        |
+| 使用 `cam0.json` 启动                     | 单路 RTSP，URL 为 `cam0`            |
+| 勿用 `cam_dual.json` / `*_dual.ini`     | 避免 `dev_num=2` 与单摄 JSON 不匹配导致黑屏 |
+| `sensor_cfg.ini` 与 `cvi_sdr_bin` 必须配对 | PQ 调参错误 → mismatch / 黑屏         |
+| 启动前先停 `rtsp_server`                   | 旧进程占用 VI/ISP，新配置不生效             |
+| 启动前 `rmmod debris`                    | 学习驱动与厂商管线抢传感器                   |
+
 
 Mac 预览地址（两颗头单摄时相同）：
 
@@ -29,6 +33,8 @@ rtsp://192.168.42.1:8554/cam0
 建议传输：`ffplay -rtsp_transport tcp ...` 或 VLC 选 TCP。
 
 ---
+
+
 
 ## 脚本一键（deploy 后）
 
@@ -43,6 +49,8 @@ chmod +x /root/test_single_cam.sh
 
 ---
 
+
+
 ## 步骤 0：重启（双摄失败后强烈建议）
 
 ```bash
@@ -53,7 +61,11 @@ reboot
 
 ---
 
+
+
 ## 步骤一：J1 GC2083（官方模组）
+
+
 
 ### 1.1 停掉旧服务
 
@@ -83,6 +95,8 @@ sleep 2
 
 ---
 
+
+
 ### 1.2 配置传感器（sensor_cfg）
 
 ```bash
@@ -99,6 +113,8 @@ grep -E 'dev_num|name|bus_id' /mnt/data/sensor_cfg.ini
 
 ---
 
+
+
 ### 1.3 配置 ISP 调参（PQ bin）
 
 ```bash
@@ -107,9 +123,11 @@ ln -sf cvi_sdr_bin_GC2083 /mnt/cfg/param/cvi_sdr_bin
 
 | 作用 | ISP 只读 `cvi_sdr_bin`；链到 GC2083 出厂 bin |
 
-**关于 `2083 != 2053` mismatch：** 日志可能出现，阶段 B 已验证 **仍可出图**，属 PQ 元数据警告，单摄 GC2083 **可先忽略**。
+**关于** `2083 != 2053` **mismatch：** 日志可能出现，阶段 B 已验证 **仍可出图**，属 PQ 元数据警告，单摄 GC2083 **可先忽略**。
 
 ---
+
+
 
 ### 1.4 确认硬件
 
@@ -117,9 +135,11 @@ ln -sf cvi_sdr_bin_GC2083 /mnt/cfg/param/cvi_sdr_bin
 i2cdetect -y 3
 ```
 
-| 作用 | 扫描 J1 所用 I2C 总线；应看到 **`37`**（0x37） |
+| 作用 | 扫描 J1 所用 I2C 总线；应看到 `37`（0x37） |
 
 ---
+
+
 
 ### 1.5 启动 RTSP
 
@@ -149,6 +169,8 @@ sleep 16
 
 ---
 
+
+
 ### 1.6 板上自检
 
 ```bash
@@ -157,13 +179,17 @@ netstat -ln | grep 8554
 grep -iE 'GC2083|Init OK|mismatch|fail|error' /tmp/rtsp_server.log | tail -10
 ```
 
-| 检查项 | 通过标准 |
-|--------|----------|
-| 进程 | `rtsp 存活` |
-| 端口 | `8554` 在监听 |
-| 日志 | `GC2083 1080P ... Init OK` |
+
+| 检查项 | 通过标准                       |
+| --- | -------------------------- |
+| 进程  | `rtsp 存活`                  |
+| 端口  | `8554` 在监听                 |
+| 日志  | `GC2083 1080P ... Init OK` |
+
 
 ---
+
+
 
 ### 1.7 Mac 验证
 
@@ -173,14 +199,18 @@ ffprobe -show_entries stream=bit_rate,width,height -of default=nw=1 gc2083.mp4
 ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 ```
 
-| 检查项 | 通过标准 |
-|--------|----------|
-| 码率 | 约 **1～2 Mbps**（阶段 B 约 1.77M） |
-| 画面 | 可见实景（非全黑） |
 
-黑屏时码率常 **&lt;100 kbps**。
+| 检查项 | 通过标准                         |
+| --- | ---------------------------- |
+| 码率  | 约 **1～2 Mbps**（阶段 B 约 1.77M） |
+| 画面  | 可见实景（非全黑）                    |
+
+
+黑屏时码率常 **<100 kbps**。
 
 ---
+
+
 
 ## 步骤二：J2 OV5647（树莓派模组）
 
@@ -191,6 +221,8 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 与 [1.1](#11-停掉旧服务) 相同（`kill rtsp` → `rm pid` → `rmmod debris` → `sleep 2`）。
 
 ---
+
+
 
 ### 2.2 sensor_cfg
 
@@ -203,6 +235,8 @@ grep -E 'dev_num|name|bus_id' /mnt/data/sensor_cfg.ini
 
 ---
 
+
+
 ### 2.3 PQ bin（必须配对）
 
 ```bash
@@ -213,26 +247,34 @@ ln -sf cvi_sdr_bin_OV5647.bin /mnt/cfg/param/cvi_sdr_bin
 
 ---
 
+
+
 ### 2.4 硬件
 
 ```bash
 i2cdetect -y 2
 ```
 
-| 作用 | J2 总线；应看到 **`36`**（0x36） |
+| 作用 | J2 总线；应看到 `36`（0x36） |
 
 ---
+
+
 
 ### 2.5 启动与自检
 
 与 [1.5～1.6](#15-启动-rtsp) 相同（`cam0.json`，日志改 grep `OV5647`）。
 
-| 检查项 | 通过标准 |
-|--------|----------|
-| 日志 | `OV5647 ... Init OK` |
+
+| 检查项      | 通过标准                                               |
+| -------- | -------------------------------------------------- |
+| 日志       | `OV5647 ... Init OK`                               |
 | mismatch | **不应**出现 `22087 vs 2053`；`pqbin md5 mismatch` 可为警告 |
 
+
 ---
+
+
 
 ### 2.6 Mac 验证
 
@@ -241,47 +283,61 @@ ffmpeg -rtsp_transport tcp -i rtsp://192.168.42.1:8554/cam0 -c copy -t 10 ov5647
 ffprobe -show_entries stream=bit_rate -of default=nw=1 ov5647.mp4
 ```
 
-| 检查项 | 通过标准 |
-|--------|----------|
-| 码率 | 约 **3～5 Mbps**（曾测 ~4.2M） |
+
+| 检查项 | 通过标准                     |
+| --- | ------------------------ |
+| 码率  | 约 **3～5 Mbps**（曾测 ~4.2M） |
+
 
 ---
+
+
 
 ## 配置对照表
 
-| 项目 | GC2083（J1） | OV5647（J2） |
-|------|----------------|----------------|
-| `sensor_cfg` | `sensor_cfg_GC2083.ini` | `sensor_cfg_OV5647_J2.ini` |
-| `bus_id` | 3 | 2 |
-| `cvi_sdr_bin` → | `cvi_sdr_bin_GC2083` | `cvi_sdr_bin_OV5647.bin` |
-| I2C 扫描 | `i2cdetect -y 3` → `37` | `i2cdetect -y 2` → `36` |
-| Init 日志 | `GC2083 ... Init OK` | `OV5647 ... Init OK` |
-| mismatch | `2083/2053` 可忽略 | 不应 `22087/2053` |
-| 参考码率 | ~1.7 Mbps | ~4 Mbps |
-| RTSP | `rtsp://192.168.42.1:8554/cam0` | 同上 |
+
+| 项目              | GC2083（J1）                      | OV5647（J2）                 |
+| --------------- | ------------------------------- | -------------------------- |
+| `sensor_cfg`    | `sensor_cfg_GC2083.ini`         | `sensor_cfg_OV5647_J2.ini` |
+| `bus_id`        | 3                               | 2                          |
+| `cvi_sdr_bin` → | `cvi_sdr_bin_GC2083`            | `cvi_sdr_bin_OV5647.bin`   |
+| I2C 扫描          | `i2cdetect -y 3` → `37`         | `i2cdetect -y 2` → `36`    |
+| Init 日志         | `GC2083 ... Init OK`            | `OV5647 ... Init OK`       |
+| mismatch        | `2083/2053` 可忽略                 | 不应 `22087/2053`            |
+| 参考码率            | ~1.7 Mbps                       | ~4 Mbps                    |
+| RTSP            | `rtsp://192.168.42.1:8554/cam0` | 同上                         |
+
 
 ---
 
+
+
 ## mismatch 说明
 
-| 日志 | 摄像头 | 是否必须消除 |
-|------|--------|----------------|
+
+| 日志                             | 摄像头    | 是否必须消除                             |
+| ------------------------------ | ------ | ---------------------------------- |
 | `mwSns:22087 != pqBinSns:2053` | OV5647 | **是** → 链 `cvi_sdr_bin_OV5647.bin` |
-| `mwSns:2083 != pqBinSns:2053` | GC2083 | **否**（警告；阶段 B 有画面时也存在） |
+| `mwSns:2083 != pqBinSns:2053`  | GC2083 | **否**（警告；阶段 B 有画面时也存在）             |
+
 
 彻底消除 GC2083 的 2083/2053 需 PQ Tool 重生成 bin 或向 Milk-V 索取，见 [CAMERA_VERIFY.md §3](./CAMERA_VERIFY.md)。
 
 ---
 
+
+
 ## 故障速查
 
-| 现象 | 优先检查 |
-|------|----------|
-| Mac 连不上 | `kill -0 pid` 是否 DEAD；`netstat \| grep 8554` |
-| 能连无画面 | `dev_num` 是否为 1；PQ bin 是否配对；`ffprobe` 码率 |
+
+| 现象                   | 优先检查                                              |
+| -------------------- | ------------------------------------------------- |
+| Mac 连不上              | `kill -0 pid` 是否 DEAD；`netstat | grep 8554`       |
+| 能连无画面                | `dev_num` 是否为 1；PQ bin 是否配对；`ffprobe` 码率          |
 | OV5647 mismatch 2053 | `ls -la /mnt/cfg/param/cvi_sdr_bin` 是否 OV5647.bin |
-| 双摄后两路都坏 | **reboot** 后从步骤一重来 |
-| `i2cdetect` 无设备 | 排线、插座、是否插对接口（J1/J2） |
+| 双摄后两路都坏              | **reboot** 后从步骤一重来                                |
+| `i2cdetect` 无设备      | 排线、插座、是否插对接口（J1/J2）                               |
+
 
 诊断脚本：
 
@@ -291,17 +347,23 @@ ffprobe -show_entries stream=bit_rate -of default=nw=1 ov5647.mp4
 
 ---
 
+
+
 ## 相关文件
 
-| 路径 | 说明 |
-|------|------|
-| `scripts/test_single_cam.sh` | 单摄自动检查 |
-| `scripts/rtsp_recover.sh` | 单摄急救 |
-| `scripts/select_pq_bin.sh` | 切换 PQ bin |
-| `app/stream/cam0.json` | 单摄 RTSP 配置 |
+
+| 路径                                | 说明         |
+| --------------------------------- | ---------- |
+| `scripts/test_single_cam.sh`      | 单摄自动检查     |
+| `scripts/rtsp_recover.sh`         | 单摄急救       |
+| `scripts/select_pq_bin.sh`        | 切换 PQ bin  |
+| `app/stream/cam0.json`            | 单摄 RTSP 配置 |
 | `duo-sdk/.../param/cvi_sdr_bin_*` | PQ bin 源文件 |
 
+
 ---
+
+
 
 ## 下一步
 

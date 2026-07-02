@@ -13,5 +13,7 @@ board/driver/*.o
 board/driver/Module.symvers
 board/driver/modules.order
 
+compile_commands.json
+
 *~
 .DS_Store

@@ -28,8 +28,8 @@ for s in check_vendor_media.sh run_security.sh stop_security.sh install_autostar
          health_check.sh stability_6h.sh stop_motion_recorder.sh media_tools.sh \
          verify_board.sh reset_single_camera.sh rtsp_preview_only.sh select_pq_bin.sh \
          setup_mixed_dual_camera.sh rtsp_dual_mixed.sh \
-         rtsp_single_gc2083.sh rtsp_single_ov5647.sh rtsp_recover.sh rtsp_diagnose.sh \
-         test_single_cam.sh; do
+         rtsp_single_gc2083.sh preview_gc2083_554.sh rtsp_single_ov5647.sh rtsp_recover.sh rtsp_diagnose.sh \
+         test_single_cam.sh test_my_cam_test.sh; do
     if [ -f "$SCRIPT_DIR/$s" ]; then
         scp "$SCRIPT_DIR/$s" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
     fi

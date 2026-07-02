@@ -145,7 +145,7 @@ M5 长稳                       stability_6h → 形态三收口
 录像：ffmpeg -rtsp_transport tcp -i <url> -c copy -t 30 clip.mp4
 ```
 
-**过渡方案（M1 完成前）：** GC2083 临时仍可用 `554/h264`（`camera-test`），但 **不算形态三完成**。
+**过渡方案（M1 完成前）：** 见 [`CAMERA_BRINGUP_ARCHIVE.md`](./CAMERA_BRINGUP_ARCHIVE.md) — GC2083 用 `554/h264`，OV5647 用 `8554/cam0`；**不能同时** 预览。不算形态三完成。
 
 ---
 
