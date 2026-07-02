@@ -4,9 +4,8 @@
 # 用法：
 #   ./test_my_cam_test_phase.sh <2|3|4|5> [gc2083|ov5647]
 #
-# 示例：
-#   ./test_my_cam_test_phase.sh 5 ov5647   # J2 OV5647 RTSP
-#   ./test_my_cam_test_phase.sh 3 gc2083   # J1 GC2083 抓一帧 YUV
+# 须与 my_cam_test_common.sh、test_my_cam_test*.sh 放在同一目录。
+# 板上部署：scp scripts/test_my_cam_test*.sh scripts/my_cam_test_common.sh root@192.168.42.1:/root/
 set -e
 
 PHASE="${1:-}"
@@ -14,18 +13,31 @@ SENSOR="${2:-gc2083}"
 DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 
 case "$PHASE" in
-    2|3|4|5) ;;
-    *)
-        echo "usage: $0 <2|3|4|5> [gc2083|ov5647]"
-        echo "  gc2083 = J1 Milk-V CAM-GC2083"
-        echo "  ov5647 = J2 树莓派 OV5647"
-        exit 1
-        ;;
+2|3|4|5) ;;
+*)
+	echo "usage: $0 <2|3|4|5> [gc2083|ov5647]"
+	echo "  gc2083 = J1 Milk-V CAM-GC2083"
+	echo "  ov5647 = J2 树莓派 OV5647"
+	exit 1
+	;;
 esac
 
-case "$PHASE" in
-    2) exec "$DIR/test_my_cam_test.sh" "$SENSOR" ;;
-    3) exec "$DIR/test_my_cam_test_phase3.sh" "$SENSOR" ;;
-    4) exec "$DIR/test_my_cam_test_phase4.sh" "$SENSOR" ;;
-    5) exec "$DIR/test_my_cam_test_phase5.sh" "$SENSOR" ;;
-esac
+if [ "$PHASE" = 2 ]; then
+	CHILD="$DIR/test_my_cam_test.sh"
+else
+	CHILD="$DIR/test_my_cam_test_phase${PHASE}.sh"
+fi
+
+COMMON="$DIR/my_cam_test_common.sh"
+if [ ! -f "$COMMON" ]; then
+	echo "missing $COMMON"
+	echo "copy scripts/my_cam_test_common.sh next to this script"
+	exit 1
+fi
+if [ ! -x "$CHILD" ]; then
+	echo "missing $CHILD"
+	echo "copy all scripts/test_my_cam_test*.sh to the same directory as $0"
+	exit 1
+fi
+
+exec "$CHILD" "$SENSOR"

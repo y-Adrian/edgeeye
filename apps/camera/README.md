@@ -34,8 +34,8 @@ cd edgeeye-duos && make ide-index
 ### 板上验证
 
 ```bash
-# 停掉占摄像头的进程
-for p in $(ps | grep -E 'sample_vi|rtsp_server|my_cam_test' | grep -v grep | awk '{print $1}'); do kill $p; done
+# 停掉占摄像头的进程（勿用裸 grep my_cam_test，会误杀 test_my_cam_test*.sh）
+for p in $(ps | grep -v grep | grep -v test_my_cam_test | grep -E '/my_cam_test[[:space:]]|/sample_vi|rtsp_server' | awk '{print $1}'); do kill $p; done
 
 # GC2083 @ J1
 ln -sf /mnt/data/sensor_cfg_GC2083.ini /mnt/data/sensor_cfg.ini
@@ -50,7 +50,7 @@ ln -sf cvi_sdr_bin_GC2083 /mnt/cfg/param/cvi_sdr_bin
 **切换另一颗头（J2 OV5647）：**
 
 ```bash
-# 通用：阶段 + 传感器
+# 通用：阶段 + 传感器（scripts/test_my_cam_test*.sh 与 my_cam_test_common.sh 须同目录部署）
 scripts/test_my_cam_test_phase.sh 5 ov5647
 
 # 或手动链 ini 后运行
