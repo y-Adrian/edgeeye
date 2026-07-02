@@ -1,8 +1,8 @@
 # camera — 自研推流学习程序
 
-按阶段从 VI 到 RTSP 逐步实现。当前：**阶段 2**（`my_cam_test`）。
+按阶段从 VI 到 RTSP 逐步实现。当前：**阶段 5**（RTSP 实时预览）。
 
-## 阶段 2：`my_cam_test`
+## 阶段 2：`my_cam_test -p 2`
 
 仅初始化 VI + ISP，不推流。等价于精简版 `sample_sensor_test`。
 
@@ -40,16 +40,103 @@ for p in $(ps | grep -E 'sample_vi|rtsp_server|my_cam_test' | grep -v grep | awk
 # GC2083 @ J1
 ln -sf /mnt/data/sensor_cfg_GC2083.ini /mnt/data/sensor_cfg.ini
 ln -sf cvi_sdr_bin_GC2083 /mnt/cfg/param/cvi_sdr_bin
-/root/my_cam_test
-# 日志应含：GC2083 ... Init OK!  最后 my_cam_test: PASSED
-
-# OV5647 @ J2
-ln -sf /mnt/data/sensor_cfg_OV5647_J2.ini /mnt/data/sensor_cfg.ini
-ln -sf cvi_sdr_bin_OV5647.bin /mnt/cfg/param/cvi_sdr_bin
-/root/my_cam_test -s 15
+/root/my_cam_test -p 2
+# 或
+/root/my_cam_test -p 2 -s 15
 ```
 
 或使用 `scripts/test_my_cam_test.sh gc2083` / `ov5647`。
+
+**切换另一颗头（J2 OV5647）：**
+
+```bash
+# 通用：阶段 + 传感器
+scripts/test_my_cam_test_phase.sh 5 ov5647
+
+# 或手动链 ini 后运行
+ln -sf /mnt/data/sensor_cfg_OV5647_J2.ini /mnt/data/sensor_cfg.ini
+ln -sf cvi_sdr_bin_OV5647.bin /mnt/cfg/param/cvi_sdr_bin
+/root/my_cam_test -p 5 -s 30
+```
+
+Mac 预览地址不变：`rtsp://192.168.42.1:8554/cam0`（换的是物理镜头，不是 URL）。
+
+## 阶段 3：VPSS 抓一帧 YUV
+
+在阶段 2 基础上：VI 绑定 VPSS，等待 AE 收敛后 `GetChnFrame`，保存 NV12 到文件。
+
+```bash
+# 停旧媒体进程 + 链 ini（同阶段 2）
+/root/my_cam_test -p 3 -o /tmp/frame.yuv
+```
+
+验收脚本：
+
+```bash
+scripts/test_my_cam_test_phase3.sh gc2083
+```
+
+**Mac 上看这一帧（无 RTSP，仅 raw YUV）：**
+
+```bash
+scp root@192.168.42.1:/tmp/frame.yuv .
+# ffplay 8.x 用 -pixel_format，不是 -pix_fmt
+ffplay -f rawvideo -pixel_format nv12 -video_size 1920x1080 frame.yuv
+
+# 或转成 PNG 更直观（单帧）
+ffmpeg -f rawvideo -pixel_format nv12 -video_size 1920x1080 -i frame.yuv -frames:v 1 preview.png
+open preview.png
+```
+
+日志应含 `saved 1920x1080 NV12 -> ...` 与 `PASSED (phase 3)`。
+
+## 阶段 4：VENC 写 H.264 文件
+
+在阶段 3 管线上绑定 VENC，采集约 1 秒码流写入裸 H.264 文件（仍无 RTSP）。
+
+```bash
+/root/my_cam_test -p 4 -o /tmp/frame.h264
+```
+
+验收脚本：
+
+```bash
+scripts/test_my_cam_test_phase4.sh gc2083
+```
+
+**Mac 上播放：**
+
+```bash
+scp root@192.168.42.1:/tmp/frame.h264 .
+ffplay frame.h264
+```
+
+日志应含 `saved H264 -> ...` 与 `PASSED (phase 4)`；文件通常 ≥ 几十 KB。
+
+## 阶段 5：RTSP 实时预览
+
+在阶段 4 管线上接入 `cvi_rtsp`：VENC 码流经 `CVI_RTSP_WriteFrame` 推到 RTSP 服务。
+
+```bash
+# 停旧媒体进程 + 链 ini（同阶段 2）
+/root/my_cam_test -p 5 -s 30 -P 8554 -u cam0
+```
+
+验收脚本：
+
+```bash
+scripts/test_my_cam_test_phase5.sh gc2083
+```
+
+**Mac 上实时预览：**
+
+```bash
+ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
+```
+
+日志应含 `RTSP streamed N frames` 与 `PASSED (phase 5)`。推流期间可用 `netstat -ln | grep 8554` 确认端口监听。
+
+默认参数：端口 `8554`、路径 `cam0`、推流时长 `30` 秒（`-s` 可调，Ctrl+C 可提前结束）。
 
 ### 调试（程序异常退出时）
 
@@ -96,7 +183,3 @@ gdbserver :1234 /root/my_cam_test -s 10
 # Mac/Docker（需 riscv64 gdb）
 riscv64-unknown-linux-musl-gdb output/my_cam_test -ex 'target remote 192.168.42.1:1234'
 ```
-
-### 下一阶段（3）
-
-在 `my_cam_test` 基础上增加 VPSS + 抓一帧 YUV 存盘。

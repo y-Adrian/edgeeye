@@ -45,11 +45,11 @@ echo "sensor_cfg -> $(readlink -f /mnt/data/sensor_cfg.ini)"
 echo "cvi_sdr_bin -> $(readlink /mnt/cfg/param/cvi_sdr_bin)"
 
 LOG=/tmp/my_cam_test.log
-"$BIN" -s "$HOLD" >"$LOG" 2>&1
+"$BIN" -p 2 -s "$HOLD" >"$LOG" 2>&1
 cat "$LOG"
 
 grep -q "$PAT" "$LOG" || { echo "FAIL: no $PAT in log"; exit 1; }
 grep -qi 'Init OK' "$LOG" || { echo "FAIL: no Init OK in log"; exit 1; }
-grep -q 'my_cam_test: PASSED' "$LOG" || { echo "FAIL: no PASSED"; exit 1; }
+grep -q 'PASSED (phase 2)' "$LOG" || { echo "FAIL: no PASSED"; exit 1; }
 
 echo "=== PASSED ($SENSOR) ==="
