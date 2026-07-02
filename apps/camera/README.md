@@ -138,6 +138,20 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 
 默认参数：端口 `8554`、路径 `cam0`、推流时长 `30` 秒（`-s` 可调，Ctrl+C 可提前结束）。
 
+## 阶段 6：双摄 VI/ISP 初始化
+
+须 `sensor_cfg.ini` 中 `dev_num=2`（混搭 ini：`sensor_cfg_GC2083_OV5647_dual.ini`）。
+
+```bash
+scripts/test_my_cam_test_phase6.sh
+# 或
+/root/test_my_cam_test_phase.sh 6
+```
+
+日志应含 `dev_num=2`、两路 `Init OK`、`dual VI/ISP OK` 与 `PASSED (phase 6)`。
+
+PQ bin 暂用 `cvi_sdr_bin_GC2083`（阶段 6 只验初始化）；后续 VPSS/RTSP 双摄可能需合并 bin。
+
 ### 调试（程序异常退出时）
 
 板上自带 **gdb / gdbserver / strace**：

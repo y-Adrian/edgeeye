@@ -5,11 +5,13 @@
  * 阶段 3：VI → VPSS，抓一帧 NV12 YUV 存盘
  * 阶段 4：VI → VPSS → VENC，写 H.264 文件
  * 阶段 5：VI → VPSS → VENC → RTSP 实时预览
+ * 阶段 6：双摄 VI/ISP 初始化（须 sensor_cfg.ini dev_num=2）
  *
  * 板上用法：
  *   ./my_cam_test -p 3 -o /tmp/frame.yuv
  *   ./my_cam_test -p 4 -o /tmp/frame.h264
  *   ./my_cam_test -p 5 -s 30 -P 8554 -u cam0
+ *   ./my_cam_test -p 6 -s 10
  */
 
 #include <fcntl.h>
@@ -204,6 +206,19 @@ static CVI_S32 vi_init(void)
 	}
 
 	printf("my_cam_test: VI/ISP init OK (look for sensor Init OK above)\n");
+	return CVI_SUCCESS;
+}
+
+static CVI_S32 phase6a_validate(void)
+{
+	if (g_stViConfig.s32WorkingViNum < 2) {
+		printf("my_cam_test: phase 6 needs dev_num=2 in sensor_cfg.ini (working=%d)\n",
+		       g_stViConfig.s32WorkingViNum);
+		return CVI_FAILURE;
+	}
+
+	printf("my_cam_test: dual VI/ISP OK (%d sensors active)\n",
+	       g_stViConfig.s32WorkingViNum);
 	return CVI_SUCCESS;
 }
 
@@ -765,10 +780,11 @@ static void usage(const char *prog)
 	printf("  Phase 3: VI -> VPSS, capture one NV12 frame\n");
 	printf("  Phase 4: VI -> VPSS -> VENC, write H.264 elementary stream\n");
 	printf("  Phase 5: VI -> VPSS -> VENC -> RTSP live preview\n");
-	printf("  -p  2, 3, 4, or 5 (default %d)\n", DEFAULT_PHASE);
+	printf("  Phase 6: dual VI/ISP init (requires dev_num=2 ini)\n");
+	printf("  -p  2, 3, 4, 5, or 6 (default %d)\n", DEFAULT_PHASE);
 	printf("  -o  phase 3 default %s; phase 4 default %s\n",
 	       DEFAULT_YUV_PATH, DEFAULT_H264_PATH);
-	printf("  -s  phase 2 hold seconds (default %d); phase 5 stream seconds (default %d)\n",
+	printf("  -s  phase 2/6 hold seconds (default %d); phase 5 stream seconds (default %d)\n",
 	       DEFAULT_HOLD_SEC, DEFAULT_STREAM_SEC);
 	printf("  -P  RTSP port for phase 5 (default %d)\n", DEFAULT_RTSP_PORT);
 	printf("  -u  RTSP URL path for phase 5 (default %s)\n", DEFAULT_RTSP_URL);
@@ -789,8 +805,8 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[opt], "-p") == 0 && opt + 1 < argc) {
 			g_phase = atoi(argv[++opt]);
-			if (g_phase < 2 || g_phase > 5) {
-				printf("my_cam_test: invalid phase %d (use 2-5)\n", g_phase);
+			if (g_phase < 2 || g_phase > 6) {
+				printf("my_cam_test: invalid phase %d (use 2-6)\n", g_phase);
 				return 1;
 			}
 			continue;
@@ -870,6 +886,16 @@ int main(int argc, char **argv)
 			vi_deinit();
 			return 1;
 		}
+	} else if (g_phase == 6) {
+		s32Ret = phase6a_validate();
+		if (s32Ret != CVI_SUCCESS) {
+			printf("my_cam_test: FAILED phase 6 %#x\n", s32Ret);
+			vi_deinit();
+			return 1;
+		}
+		printf("holding %d s (dual ISP running)...\n", hold_sec);
+		for (int i = 0; i < hold_sec && !g_stop; i++)
+			sleep(1);
 	} else {
 		printf("holding %d s (ISP running)...\n", hold_sec);
 		for (int i = 0; i < hold_sec && !g_stop; i++)

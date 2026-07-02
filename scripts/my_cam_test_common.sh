@@ -52,6 +52,35 @@ my_cam_stop_media() {
 	rmmod debris 2>/dev/null || true
 }
 
+my_cam_resolve_dual_sensor() {
+	INI=/mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
+	PQ="${PQ_BIN:-cvi_sdr_bin_GC2083}"
+	PAT_GC2083=GC2083
+	PAT_OV5647=OV5647
+
+	if [ ! -f "$INI" ] && [ -f /root/stream/sensor_cfg_GC2083_OV5647_dual.ini ]; then
+		cp /root/stream/sensor_cfg_GC2083_OV5647_dual.ini "$INI"
+	fi
+	if [ ! -f "$INI" ]; then
+		echo "missing $INI (deploy configs/sensor/ or stream/)"
+		return 1
+	fi
+	return 0
+}
+
+my_cam_link_dual_sensor() {
+	my_cam_resolve_dual_sensor || return 1
+	ln -sf "$INI" /mnt/data/sensor_cfg.ini
+	ln -sf "$PQ" /mnt/cfg/param/cvi_sdr_bin
+	if readlink -f /mnt/data/sensor_cfg.ini >/dev/null 2>&1; then
+		echo "sensor_cfg -> $(readlink -f /mnt/data/sensor_cfg.ini)"
+	else
+		echo "sensor_cfg -> $(readlink /mnt/data/sensor_cfg.ini)"
+	fi
+	echo "cvi_sdr_bin -> $(readlink /mnt/cfg/param/cvi_sdr_bin)"
+	grep -E 'dev_num|name|bus_id' /mnt/data/sensor_cfg.ini || true
+}
+
 my_cam_link_sensor() {
 	ln -sf "$INI" /mnt/data/sensor_cfg.ini
 	ln -sf "$PQ" /mnt/cfg/param/cvi_sdr_bin
