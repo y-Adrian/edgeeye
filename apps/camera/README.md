@@ -152,6 +152,14 @@ scripts/test_my_cam_test_phase6.sh
 
 PQ bin 暂用 `cvi_sdr_bin_GC2083`（阶段 6 只验初始化）；后续 VPSS/RTSP 双摄可能需合并 bin。
 
+## 阶段 7：双摄 VPSS 抓帧
+
+```bash
+scripts/test_my_cam_test_phase7.sh
+```
+
+输出 `/tmp/cam0.yuv`（J1 GC2083）、`/tmp/cam1.yuv`（J2 OV5647）。日志应含 `dual VPSS capture OK` 与 `PASSED (phase 7)`。
+
 ### 调试（程序异常退出时）
 
 板上自带 **gdb / gdbserver / strace**：

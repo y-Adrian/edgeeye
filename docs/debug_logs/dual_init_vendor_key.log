@@ -1,0 +1,80 @@
+7:dev_num = 2
+61:*** dev_num:2
+64:*** vi_vpss_mode:1
+80:**** - bVpssBinding:1
+125:**** - bVpssBinding:1
+165:ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+166:ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+178:ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+179:[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+187:ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+256:[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+259:VpssChn0 , Enable Vpss Grp: 0
+261:CVI_VPSS_CreateGrp:0, s32Ret=0
+262:VpssChn0 , Enable Vpss Grp: 1
+264:CVI_VPSS_CreateGrp:1, s32Ret=0
+272:dev_num = 2
+283:*** dev_num:2
+284:*** vi_vpss_mode:1
+286:**** - bVpssBinding:1
+290:**** - bVpssBinding:1
+293:ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+294:ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+295:ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+296:[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+297:ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+304:[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+305:VpssChn0 , Enable Vpss Grp: 0
+307:CVI_VPSS_CreateGrp:0, s32Ret=0
+308:VpssChn0 , Enable Vpss Grp: 1
+310:CVI_VPSS_CreateGrp:1, s32Ret=0
+313:dev_num = 2
+324:*** dev_num:2
+325:*** vi_vpss_mode:1
+327:**** - bVpssBinding:1
+331:**** - bVpssBinding:1
+334:ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+335:ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+336:ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+337:[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+338:ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+345:[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+346:VpssChn0 , Enable Vpss Grp: 0
+348:CVI_VPSS_CreateGrp:0, s32Ret=0
+349:VpssChn0 , Enable Vpss Grp: 1
+351:CVI_VPSS_CreateGrp:1, s32Ret=0
+354:dev_num = 2
+365:*** dev_num:2
+366:*** vi_vpss_mode:1
+368:**** - bVpssBinding:1
+372:**** - bVpssBinding:1
+375:ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+376:ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+377:ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+378:[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+379:ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+386:[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+387:VpssChn0 , Enable Vpss Grp: 0
+389:CVI_VPSS_CreateGrp:0, s32Ret=0
+390:VpssChn0 , Enable Vpss Grp: 1
+392:CVI_VPSS_CreateGrp:1, s32Ret=0
+395:dev_num = 2
+406:*** dev_num:2
+407:*** vi_vpss_mode:1
+409:**** - bVpssBinding:1
+413:**** - bVpssBinding:1
+416:ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+417:ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+418:ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+419:[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+420:ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+427:[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+428:VpssChn0 , Enable Vpss Grp: 0
+430:CVI_VPSS_CreateGrp:0, s32Ret=0
+431:VpssChn0 , Enable Vpss Grp: 1
+433:CVI_VPSS_CreateGrp:1, s32Ret=0
+436:dev_num = 2
+447:*** dev_num:2
+448:*** vi_vpss_mode:1
+450:**** - bVpssBinding:1
+454:**** - bVpssBinding:1

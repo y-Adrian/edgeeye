@@ -1,0 +1,400 @@
+=== dual init capture 1970-01-01T00:01:56+00:00 ===
+RTSP_BIN=/mnt/system/usr/test/rtsp_server
+CFG=/root/stream/cam_dual.json
+sensor_cfg -> /mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
+cvi_sdr_bin -> cvi_sdr_bin_GC2083
+--- sensor_cfg ---
+dev_num = 2
+name = GCORE_GC2083_MIPI_2M_30FPS_10BIT
+bus_id = 3
+mipi_dev = 0
+name = OV_OV5647_MIPI_2M_30FPS_10BIT
+bus_id = 2
+mipi_dev = 1
+--- cam_dual.json ---
+{
+    "dev-num": 2,
+    "rtsp-port": 8554,
+    "buf1-blk-cnt": 4,
+    "vi-vpss-mode": 1,
+    "sensor-config-path": "/mnt/data/sensor_cfg.ini",
+    "video-src-info": [
+        {
+            "chn": 0,
+            "rtsp-url": "cam",
+            "buf-blk-cnt": 4,
+            "codec": "264",
+            "venc-bind-vpss": true,
+            "compress-mode": "tile"
+        },
+        {
+            "chn": 1,
+            "rtsp-url": "cam",
+            "buf-blk-cnt": 4,
+            "codec": "264",
+            "venc-bind-vpss": true,
+            "compress-mode": "tile"
+        }
+    ]
+}
+--- rtsp_server log ---
+buf1-blk-cnt : 4
+dev-num : 2
+rtsp-port : 8554
+sensor-config-path : "/mnt/data/sensor_cfg.ini"
+vi-vpss-mode : 1
+video-src-info : [{"buf-blk-cnt":4,"chn":0,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true},{"buf-blk-cnt":4,"chn":1,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true}]
+[SAMPLE_COMM_SNS_ParseIni]-2219: Parse /mnt/data/sensor_cfg.ini
+[parse_source_devnum]-1812: devNum =  2
+[parse_sensor_name]-1893: sensor =  GCORE_GC2083_MIPI_2M_30FPS_10BIT
+[parse_sensor_busid]-1922: bus_id =  3
+[parse_sensor_i2caddr]-1933: sns_i2c_addr =  37
+[parse_sensor_mipidev]-1944: mipi_dev =  0
+[parse_sensor_laneid]-1955: Lane_id =  2, 0, 1, -1, -1
+[parse_sensor_pnswap]-1966: pn_swap =  0, 0, 0, 0, 0
+[parse_sensor_name]-1893: sensor =  OV_OV5647_MIPI_2M_30FPS_10BIT
+[parse_sensor_busid]-1922: bus_id =  2
+[parse_sensor_i2caddr]-1933: sns_i2c_addr =  36
+[parse_sensor_mipidev]-1944: mipi_dev =  1
+[parse_sensor_laneid]-1955: Lane_id =  5, 3, 4, -1, -1
+[parse_sensor_pnswap]-1966: pn_swap =  0, 0, 0, 0, 0
+*** dev_num:2
+*** rtspPort:8554
+*** rtsp_max_buf_size:1048576
+*** vi_vpss_mode:1
+*** buf1_blk_cnt:4
+*** model_path:/mnt/data/cvi_models/retinaface_mnet0.25_342_608.cvimodel
+*** teaisp-pq-bmodel:
+*** enable_set_sensor_config:0
+*** sensor_config_path:/mnt/data/sensor_cfg.ini
+*** isp_debug_lvl:255
+*** enable_set_pq_bin:0
+*** sdr_pq_bin_path:
+*** wdr_pq_bin_path:
+**** video_src_info[0]
+**** - rtspURL:cam
+**** - ViChn:0
+**** - buf_blk_cnt:4
+**** - bEnable3DNR:1
+**** - bEnableLSC:1
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - enableIspInfoOsd:0
+**** - compress_mode:1
+**** - bVencBindVpss:1
+**** - enableRetinaFace:0
+**** - enableTeaisppq:0
+**** - venc_cfg.codec:264
+**** - venc_cfg.bsMode:0
+**** - venc_cfg.rcMode:4
+**** - venc_cfg.gop:50
+**** - venc_cfg.iqp:32
+**** - venc_cfg.pqp:32
+**** - venc_cfg.bitrate:256
+**** - venc_cfg.maxbitrate:5000
+**** - venc_cfg.firstFrmstartQp:34
+**** - venc_cfg.initialDelay:1000
+**** - venc_cfg.u32ThrdLv:2
+**** - venc_cfg.h264EntropyMode:1
+**** - venc_cfg.maxIprop:100
+**** - venc_cfg.maxQp:51
+**** - venc_cfg.minQp:1
+**** - venc_cfg.maxIqp:51
+**** - venc_cfg.minIqp:1
+**** - venc_cfg.s32IPQpDelta:2
+**** - venc_cfg.s32ChangePos:90
+**** - venc_cfg.s32MinStillPercent:10
+**** - venc_cfg.u32MaxStillQP:48
+**** - venc_cfg.u32MotionSensitivity:80
+**** - venc_cfg.s32AvbrFrmLostOpen:1
+**** - venc_cfg.s32AvbrFrmGap:3
+**** - venc_cfg.s32AvbrPureStillThr:4
+**** - venc_cfg.bitstreamBufSize:0
+**** - venc_cfg.aspectRatioInfoPresentFlag:0
+**** - venc_cfg.overscanInfoPresentFlag:0
+**** - venc_cfg.videoSignalTypePresentFlag:0
+**** - venc_cfg.videoFormat:0
+**** - venc_cfg.videoFullRangeFlag:0
+**** - venc_cfg.colourDescriptionPresentFlag:0
+**** video_src_info[1]
+**** - rtspURL:cam
+**** - ViChn:1
+**** - buf_blk_cnt:4
+**** - bEnable3DNR:1
+**** - bEnableLSC:1
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - enableIspInfoOsd:0
+**** - compress_mode:1
+**** - bVencBindVpss:1
+**** - enableRetinaFace:0
+**** - enableTeaisppq:0
+**** - venc_cfg.codec:264
+**** - venc_cfg.bsMode:0
+**** - venc_cfg.rcMode:4
+**** - venc_cfg.gop:50
+**** - venc_cfg.iqp:32
+**** - venc_cfg.pqp:32
+**** - venc_cfg.bitrate:256
+**** - venc_cfg.maxbitrate:5000
+**** - venc_cfg.firstFrmstartQp:34
+**** - venc_cfg.initialDelay:1000
+**** - venc_cfg.u32ThrdLv:2
+**** - venc_cfg.h264EntropyMode:1
+**** - venc_cfg.maxIprop:100
+**** - venc_cfg.maxQp:51
+**** - venc_cfg.minQp:1
+**** - venc_cfg.maxIqp:51
+**** - venc_cfg.minIqp:1
+**** - venc_cfg.s32IPQpDelta:2
+**** - venc_cfg.s32ChangePos:90
+**** - venc_cfg.s32MinStillPercent:10
+**** - venc_cfg.u32MaxStillQP:48
+**** - venc_cfg.u32MotionSensitivity:80
+**** - venc_cfg.s32AvbrFrmLostOpen:1
+**** - venc_cfg.s32AvbrFrmGap:3
+**** - venc_cfg.s32AvbrPureStillThr:4
+**** - venc_cfg.bitstreamBufSize:0
+**** - venc_cfg.aspectRatioInfoPresentFlag:0
+**** - venc_cfg.overscanInfoPresentFlag:0
+**** - venc_cfg.videoSignalTypePresentFlag:0
+**** - venc_cfg.videoFormat:0
+**** - venc_cfg.videoFullRangeFlag:0
+**** - venc_cfg.colourDescriptionPresentFlag:0
+enable online mode 1
+ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+stSnsrMode.u16Width 1920 stSnsrMode.u16Height 1080 30.000000 wdrMode 0 pstSnsObj 0x3fbb79b3e8
+stSnsrMode.u16Width 1920 stSnsrMode.u16Height 1080 30.000000 wdrMode 0 pstSnsObj 0x3fbb79bb30
+[SAMPLE_COMM_VI_StartMIPI]-494: sensor 0 stDevAttr.devno 0
+[SAMPLE_COMM_VI_StartMIPI]-494: sensor 1 stDevAttr.devno 1
+awbInit ver 6.9@2021500
+0 R:1400 B:3100 CT:2850
+1 R:1500 B:2500 CT:3900
+2 R:2300 B:1600 CT:6500
+Golden 1024 1024 1024
+WB Quadratic:0
+isWdr:0
+ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+awbInit ver 6.9@2021500
+0 R:1400 B:3100 CT:2850
+1 R:1500 B:2500 CT:3900
+2 R:2300 B:1600 CT:6500
+Golden 1024 1024 1024
+WB Quadratic:0
+isWdr:0
+ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+********************************************************************************
+cvi_bin_isp message
+gerritId:      NULL           commitId:      6b03c2762      
+md5:           1b6dd6bec5dfd417b8d1136b9ca0aa67
+sensorNum      2              
+sensorName0    2083           
+sensorName1    22087          
+
+PQBIN message
+gerritId:      80171          commitId:      5c9d8fc5d      
+md5:           ba5a510e093ad42db6788e6c2d13169e
+sensorNum      3              
+sensorName0    2053           
+sensorName1    2083           
+
+author:        wanqiang.he    desc:          思博慧CV1812H_GC2083_RGB_mode_V1.0.0
+createTime:    2023-08-04 16:48:08version:       V1.1           
+tool Version:       v3.0.5.24           mode:      
+********************************************************************************
+sensorName(0) mismatch, mwSns:2083 != pqBinSns:2053
+19700101 00:01:57.518 0564 E isp AF_GetAttr:574 pstFocusMpiAttr is NULL
+JSON_READ_ERR:NOT_EXIST 71(L) lblc
+
+JSON_READ_ERR:NOT_EXIST 71(L) lblcLut
+
+JSON_READ_ERR:NOT_EXIST 71(L) clut_hsl
+
+JSON_READ_ERR:DATA_TYPE 77(L) vc_motion.MotionThreshold
+
+JSON_READ_ERR:NOT_EXIST 71(L) teaisp_bnr
+
+JSON_READ_ERR:NOT_EXIST 71(L) teaisp_bnr_np
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.u16MultiLSThr
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.u16CALumaDiff
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.u16CAAdjustRatio
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.stInterference
+
+JSON_READ_ERR:NOT_EXIST 71(L) FocusAttr
+
+19700101 00:01:57.865 0564 E isp AF_SetAttr:558 pstFocusMpiAttr is NULL
+19700101 00:01:57.875 0564 E isp AF_GetAttr:574 pstFocusMpiAttr is NULL
+JSON_READ_ERR:NOT_EXIST 71(L) lblc
+
+JSON_READ_ERR:NOT_EXIST 71(L) lblcLut
+
+JSON_READ_ERR:NOT_EXIST 71(L) clut_hsl
+
+JSON_READ_ERR:DATA_TYPE 77(L) vc_motion.MotionThreshold
+
+JSON_READ_ERR:NOT_EXIST 71(L) teaisp_bnr
+
+JSON_READ_ERR:NOT_EXIST 71(L) teaisp_bnr_np
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.u16MultiLSThr
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.u16CALumaDiff
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.u16CAAdjustRatio
+
+JSON_READ_ERR:NOT_EXIST 71(L) AWBAttrEx.stInterference
+
+JSON_READ_ERR:NOT_EXIST 71(L) FocusAttr
+
+19700101 00:01:58.223 0564 E isp AF_SetAttr:558 pstFocusMpiAttr is NULL
+[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+CVI_ISP_GetPubAttr Get FPS: 30.000000
+CVI_ISP_GetPubAttr Get FPS: 30.000000
+VpssChn0 , Enable Vpss Grp: 0
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:0, s32Ret=0
+VpssChn0 , Enable Vpss Grp: 1
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:1, s32Ret=0
+rtsp://169.254.185.0:8554/cam0
+rtsp://169.254.185.0:8554/cam1
+--- process alive pid=564 ---
+tcp        0      0 0.0.0.0:8554            0.0.0.0:*               LISTEN      
+--- key lines ---
+sensor_cfg -> /mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
+cvi_sdr_bin -> cvi_sdr_bin_GC2083
+dev_num = 2
+name = GCORE_GC2083_MIPI_2M_30FPS_10BIT
+name = OV_OV5647_MIPI_2M_30FPS_10BIT
+    "vi-vpss-mode": 1,
+            "venc-bind-vpss": true,
+            "venc-bind-vpss": true,
+vi-vpss-mode : 1
+video-src-info : [{"buf-blk-cnt":4,"chn":0,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true},{"buf-blk-cnt":4,"chn":1,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true}]
+[parse_source_devnum]-1812: devNum =  2
+[parse_sensor_name]-1893: sensor =  GCORE_GC2083_MIPI_2M_30FPS_10BIT
+[parse_sensor_name]-1893: sensor =  OV_OV5647_MIPI_2M_30FPS_10BIT
+*** dev_num:2
+*** vi_vpss_mode:1
+**** - rtspURL:cam
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - bVencBindVpss:1
+**** - rtspURL:cam
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - bVencBindVpss:1
+ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+sensorName0    2083           
+sensorName1    22087          
+sensorName0    2053           
+sensorName1    2083           
+author:        wanqiang.he    desc:          思博慧CV1812H_GC2083_RGB_mode_V1.0.0
+sensorName(0) mismatch, mwSns:2083 != pqBinSns:2053
+[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+VpssChn0 , Enable Vpss Grp: 0
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:0, s32Ret=0
+VpssChn0 , Enable Vpss Grp: 1
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:1, s32Ret=0
+sensor_cfg -> /mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
+cvi_sdr_bin -> cvi_sdr_bin_GC2083
+dev_num = 2
+name = GCORE_GC2083_MIPI_2M_30FPS_10BIT
+name = OV_OV5647_MIPI_2M_30FPS_10BIT
+    "vi-vpss-mode": 1,
+            "venc-bind-vpss": true,
+            "venc-bind-vpss": true,
+vi-vpss-mode : 1
+video-src-info : [{"buf-blk-cnt":4,"chn":0,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true},{"buf-blk-cnt":4,"chn":1,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true}]
+[parse_source_devnum]-1812: devNum =  2
+[parse_sensor_name]-1893: sensor =  GCORE_GC2083_MIPI_2M_30FPS_10BIT
+[parse_sensor_name]-1893: sensor =  OV_OV5647_MIPI_2M_30FPS_10BIT
+*** dev_num:2
+*** vi_vpss_mode:1
+**** - rtspURL:cam
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - bVencBindVpss:1
+**** - rtspURL:cam
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - bVencBindVpss:1
+ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+sensorName0    2083           
+sensorName1    22087          
+sensorName0    2053           
+sensorName1    2083           
+author:        wanqiang.he    desc:          思博慧CV1812H_GC2083_RGB_mode_V1.0.0
+sensorName(0) mismatch, mwSns:2083 != pqBinSns:2053
+[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+VpssChn0 , Enable Vpss Grp: 0
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:0, s32Ret=0
+VpssChn0 , Enable Vpss Grp: 1
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:1, s32Ret=0
+sensor_cfg -> /mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
+cvi_sdr_bin -> cvi_sdr_bin_GC2083
+dev_num = 2
+name = GCORE_GC2083_MIPI_2M_30FPS_10BIT
+name = OV_OV5647_MIPI_2M_30FPS_10BIT
+    "vi-vpss-mode": 1,
+            "venc-bind-vpss": true,
+            "venc-bind-vpss": true,
+vi-vpss-mode : 1
+video-src-info : [{"buf-blk-cnt":4,"chn":0,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true},{"buf-blk-cnt":4,"chn":1,"codec":"264","compress-mode":"tile","rtsp-url":"cam","venc-bind-vpss":true}]
+[parse_source_devnum]-1812: devNum =  2
+[parse_sensor_name]-1893: sensor =  GCORE_GC2083_MIPI_2M_30FPS_10BIT
+[parse_sensor_name]-1893: sensor =  OV_OV5647_MIPI_2M_30FPS_10BIT
+*** dev_num:2
+*** vi_vpss_mode:1
+**** - rtspURL:cam
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - bVencBindVpss:1
+**** - rtspURL:cam
+**** - bVpssBinding:1
+**** - VpssChn:0
+**** - bVencBindVpss:1
+ISP Vipipe(0) Allocate pa(0x99b5e000) va(0x0x3fbb53f000) size(311584)
+ISP Vipipe(1) Allocate pa(0x99bab000) va(0x0x3fbb4f2000) size(311584)
+ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+[SAMPLE_COMM_ISP_Thread]-390: ISP Dev 0 running!
+ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+sensorName0    2083           
+sensorName1    22087          
+sensorName0    2053           
+sensorName1    2083           
+author:        wanqiang.he    desc:          思博慧CV1812H_GC2083_RGB_mode_V1.0.0
+sensorName(0) mismatch, mwSns:2083 != pqBinSns:2053
+[SAMPLE_COMM_ISP_Thread]-384: ISP Dev 1 return
+VpssChn0 , Enable Vpss Grp: 0
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:0, s32Ret=0
+VpssChn0 , Enable Vpss Grp: 1
+VPSS init with src (1920, 1080) dst (1920, 1080).
+CVI_VPSS_CreateGrp:1, s32Ret=0
+sensor_cfg -> /mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
+cvi_sdr_bin -> cvi_sdr_bin_GC2083
+dev_num = 2
+name = GCORE_GC2083_MIPI_2M_30FPS_10BIT
+name = OV_OV5647_MIPI_2M_30FPS_10BIT
+    "vi-vpss-mode": 1,
+            "venc-bind-vpss": true,
+            "venc-bind-vpss": true,

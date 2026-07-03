@@ -6,6 +6,7 @@
  * 阶段 4：VI → VPSS → VENC，写 H.264 文件
  * 阶段 5：VI → VPSS → VENC → RTSP 实时预览
  * 阶段 6：双摄 VI/ISP 初始化（须 sensor_cfg.ini dev_num=2）
+ * 阶段 7：双摄 VI → VPSS，各抓一帧 NV12
  *
  * 板上用法：
  *   ./my_cam_test -p 3 -o /tmp/frame.yuv
@@ -23,6 +24,8 @@
 #include <unistd.h>
 
 #include "sample_comm.h"
+#include "cvi_isp.h"
+#include "cvi_sys.h"
 #include "cvi_venc.h"
 #include "rtsp.h"
 
@@ -40,6 +43,10 @@
 #define ISP_SETTLE_SEC    2
 #define VENC_SAVE_STREAMS 30
 #define RTSP_MIN_FRAMES    30
+#define DUAL_ISP_SETTLE_SEC 6
+#define MAX_CAM            2
+#define DUAL_CAM0_YUV      "/tmp/cam0.yuv"
+#define DUAL_CAM1_YUV      "/tmp/cam1.yuv"
 
 static SAMPLE_VI_CONFIG_S g_stViConfig;
 static volatile sig_atomic_t g_stop;
@@ -50,11 +57,61 @@ static char g_out_path[256] = DEFAULT_YUV_PATH;
 static int g_rtsp_port = DEFAULT_RTSP_PORT;
 static char g_rtsp_url[128] = DEFAULT_RTSP_URL;
 static CVI_BOOL g_vpss_up;
+static int g_vpss_grp_mask;
+static CVI_BOOL g_dual_media_mode;
 static CVI_BOOL g_venc_up;
 static CVI_BOOL g_rtsp_up;
 static CVI_RTSP_CTX *g_rtsp_ctx;
 static CVI_RTSP_SESSION *g_rtsp_session;
 static chnInputCfg g_venc_ic;
+
+/* 双摄在线 VPSS：与 cvi_rtsp vpss_helper.cpp init_vi 一致 */
+static void prepare_dual_vi_online_config(SAMPLE_VI_CONFIG_S *pstViConfig)
+{
+	for (CVI_S32 i = 0; i < pstViConfig->s32WorkingViNum; i++) {
+		pstViConfig->astViInfo[i].stChnInfo.enCompressMode = COMPRESS_MODE_TILE;
+		pstViConfig->astViInfo[i].stPipeInfo.enMastPipeMode = VI_OFFLINE_VPSS_OFFLINE;
+		pstViConfig->astViInfo[i].stPipeInfo.aPipe[0] = i;
+		pstViConfig->astViInfo[i].stPipeInfo.aPipe[1] = -1;
+		pstViConfig->astViInfo[i].stPipeInfo.aPipe[2] = -1;
+		pstViConfig->astViInfo[i].stPipeInfo.aPipe[3] = -1;
+	}
+}
+
+static CVI_S32 setup_dual_media_mode(void)
+{
+	VI_VPSS_MODE_S stVIVPSSMode;
+	VPSS_MODE_S stVPSSMode;
+	CVI_S32 s32Ret;
+
+	memset(&stVIVPSSMode, 0, sizeof(stVIVPSSMode));
+	memset(&stVPSSMode, 0, sizeof(stVPSSMode));
+
+	stVIVPSSMode.aenMode[0] = VI_OFFLINE_VPSS_ONLINE;
+	stVIVPSSMode.aenMode[1] = VI_OFFLINE_VPSS_ONLINE;
+
+	s32Ret = CVI_SYS_SetVIVPSSMode(&stVIVPSSMode);
+	if (s32Ret != CVI_SUCCESS) {
+		printf("my_cam_test: SetVIVPSSMode failed %#x\n", s32Ret);
+		return s32Ret;
+	}
+
+	stVPSSMode.enMode = VPSS_MODE_DUAL;
+	stVPSSMode.aenInput[0] = VPSS_INPUT_MEM;
+	stVPSSMode.ViPipe[0] = 0;
+	stVPSSMode.aenInput[1] = VPSS_INPUT_ISP;
+	stVPSSMode.ViPipe[1] = 0;
+
+	s32Ret = CVI_SYS_SetVPSSModeEx(&stVPSSMode);
+	if (s32Ret != CVI_SUCCESS) {
+		printf("my_cam_test: SetVPSSModeEx failed %#x\n", s32Ret);
+		return s32Ret;
+	}
+
+	g_dual_media_mode = CVI_TRUE;
+	printf("my_cam_test: dual VI-VPSS online (VPSS_INPUT_MEM+ISP, ViPipe[1]=0)\n");
+	return CVI_SUCCESS;
+}
 
 static void handle_signal(int signo)
 {
@@ -71,10 +128,10 @@ static CVI_S32 setup_vb_pool(const SAMPLE_INI_CFG_S *pstIniCfg,
 	CVI_U32 u32BlkSize, u32BlkRotSize;
 	CVI_U32 vb_cnt = 3;
 
-	if (g_phase >= 4)
+	if (g_phase >= 4 && g_phase <= 5)
 		vb_cnt = 8;
-	else if (g_phase >= 3)
-		vb_cnt = 5;
+	else if (g_phase == 3 || g_phase == 7)
+		vb_cnt = 8;
 
 	memset(pstVbConf, 0, sizeof(*pstVbConf));
 
@@ -107,8 +164,11 @@ static CVI_S32 setup_vb_pool(const SAMPLE_INI_CFG_S *pstIniCfg,
 
 		for (CVI_U32 j = 0; j < pstVbConf->u32MaxPoolCnt; j++) {
 			if (pstVbConf->astCommPool[j].u32BlkSize == u32BlkSize) {
-				pstVbConf->astCommPool[j].u32BlkCnt += vb_cnt;
-				create_new = CVI_FALSE;
+				/* 双摄 phase7 在线 VPSS 须每路独立 pool（对齐 vendor init_vi） */
+				if (!(g_phase == 7 && pstIniCfg->devNum >= 2)) {
+					pstVbConf->astCommPool[j].u32BlkCnt += vb_cnt;
+					create_new = CVI_FALSE;
+				}
 				break;
 			}
 		}
@@ -188,6 +248,9 @@ static CVI_S32 vi_init(void)
 
 	memcpy(&g_stViConfig, &stViConfig, sizeof(g_stViConfig));
 
+	if (stIniCfg.devNum >= 2 && g_phase >= 7)
+		prepare_dual_vi_online_config(&stViConfig);
+
 	s32Ret = setup_vb_pool(&stIniCfg, &stViConfig, &stVbConf);
 	if (s32Ret != CVI_SUCCESS)
 		return s32Ret;
@@ -198,11 +261,29 @@ static CVI_S32 vi_init(void)
 		return s32Ret;
 	}
 
+	if (stIniCfg.devNum >= 2 && g_phase >= 7) {
+		s32Ret = setup_dual_media_mode();
+		if (s32Ret != CVI_SUCCESS) {
+			SAMPLE_COMM_SYS_Exit();
+			return s32Ret;
+		}
+	}
+
 	s32Ret = SAMPLE_PLAT_VI_INIT(&stViConfig); /* 启动 VI + ISP */
 	if (s32Ret != CVI_SUCCESS) {
 		printf("my_cam_test: VI_Init failed %#x\n", s32Ret);
 		SAMPLE_COMM_SYS_Exit();
 		return s32Ret;
+	}
+
+	if (stIniCfg.devNum >= 2 && g_phase >= 7) {
+		for (CVI_S32 i = 0; i < stViConfig.s32WorkingViNum; i++) {
+			ISP_PUB_ATTR_S stPubAttr = {0};
+			VI_PIPE pipe = stViConfig.astViInfo[i].stPipeInfo.aPipe[0];
+
+			CVI_ISP_GetPubAttr(pipe, &stPubAttr);
+			printf("my_cam_test: pipe%d ISP FPS %.2f\n", pipe, stPubAttr.f32FrameRate);
+		}
 	}
 
 	printf("my_cam_test: VI/ISP init OK (look for sensor Init OK above)\n");
@@ -222,7 +303,8 @@ static CVI_S32 phase6a_validate(void)
 	return CVI_SUCCESS;
 }
 
-static CVI_S32 vpss_init(const SIZE_S *pstSize, CVI_U32 depth)
+static CVI_S32 vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSize, CVI_U32 depth,
+			     CVI_U8 vpss_dev)
 {
 	VPSS_GRP_ATTR_S stVpssGrpAttr;
 	VPSS_CHN_ATTR_S astVpssChnAttr[VPSS_MAX_PHY_CHN_NUM];
@@ -237,14 +319,14 @@ static CVI_S32 vpss_init(const SIZE_S *pstSize, CVI_U32 depth)
 	stVpssGrpAttr.enPixelFormat = SAMPLE_PIXEL_FORMAT;
 	stVpssGrpAttr.u32MaxW = pstSize->u32Width;
 	stVpssGrpAttr.u32MaxH = pstSize->u32Height;
-	stVpssGrpAttr.u8VpssDev = 0;
+	stVpssGrpAttr.u8VpssDev = vpss_dev;
 
 	astVpssChnAttr[VPSS_CHN_ID].u32Width = pstSize->u32Width;
 	astVpssChnAttr[VPSS_CHN_ID].u32Height = pstSize->u32Height;
 	astVpssChnAttr[VPSS_CHN_ID].enVideoFormat = VIDEO_FORMAT_LINEAR;
 	astVpssChnAttr[VPSS_CHN_ID].enPixelFormat = SAMPLE_PIXEL_FORMAT;
-	astVpssChnAttr[VPSS_CHN_ID].stFrameRate.s32SrcFrameRate = 30;
-	astVpssChnAttr[VPSS_CHN_ID].stFrameRate.s32DstFrameRate = 30;
+	astVpssChnAttr[VPSS_CHN_ID].stFrameRate.s32SrcFrameRate = -1;
+	astVpssChnAttr[VPSS_CHN_ID].stFrameRate.s32DstFrameRate = -1;
 	astVpssChnAttr[VPSS_CHN_ID].u32Depth = depth;
 	astVpssChnAttr[VPSS_CHN_ID].bMirror = CVI_FALSE;
 	astVpssChnAttr[VPSS_CHN_ID].bFlip = CVI_FALSE;
@@ -253,40 +335,60 @@ static CVI_S32 vpss_init(const SIZE_S *pstSize, CVI_U32 depth)
 
 	abChnEnable[VPSS_CHN_ID] = CVI_TRUE;
 
-	s32Ret = SAMPLE_COMM_VPSS_Init(VPSS_GRP_ID, abChnEnable, &stVpssGrpAttr, astVpssChnAttr);
+	s32Ret = SAMPLE_COMM_VPSS_Init(vpss_grp, abChnEnable, &stVpssGrpAttr, astVpssChnAttr);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VPSS_Init failed %#x\n", s32Ret);
+		printf("my_cam_test: VPSS_Init grp%d failed %#x\n", vpss_grp, s32Ret);
 		return s32Ret;
 	}
 
-	s32Ret = SAMPLE_COMM_VPSS_Start(VPSS_GRP_ID, abChnEnable, &stVpssGrpAttr,
+	s32Ret = SAMPLE_COMM_VPSS_Start(vpss_grp, abChnEnable, &stVpssGrpAttr,
 					astVpssChnAttr);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VPSS_Start failed %#x\n", s32Ret);
+		printf("my_cam_test: VPSS_Start grp%d failed %#x\n", vpss_grp, s32Ret);
 		return s32Ret;
 	}
 
+	if (g_dual_media_mode) {
+		s32Ret = CVI_VPSS_SetGrpParamfromBin(vpss_grp, VPSS_CHN_ID);
+		if (s32Ret != CVI_SUCCESS)
+			printf("my_cam_test: SetGrpParamfromBin grp%d %#x (non-fatal)\n",
+			       vpss_grp, s32Ret);
+	}
+
+	g_vpss_grp_mask |= (1 << vpss_grp);
 	g_vpss_up = CVI_TRUE;
-	printf("my_cam_test: VPSS %ux%u ready\n", pstSize->u32Width, pstSize->u32Height);
+	printf("my_cam_test: VPSS grp%d %ux%u ready\n", vpss_grp,
+	       pstSize->u32Width, pstSize->u32Height);
+	return CVI_SUCCESS;
+}
+
+static CVI_S32 vpss_init(const SIZE_S *pstSize, CVI_U32 depth)
+{
+	return vpss_init_grp(VPSS_GRP_ID, pstSize, depth, 0);
+}
+
+static CVI_S32 vi_bind_vpss_cam(int cam_idx)
+{
+	VI_PIPE vi_pipe = g_stViConfig.astViInfo[cam_idx].stPipeInfo.aPipe[0];
+	VI_CHN vi_chn = g_stViConfig.astViInfo[cam_idx].stChnInfo.ViChn;
+	VPSS_GRP vpss_grp = (VPSS_GRP)cam_idx;
+	CVI_S32 s32Ret;
+
+	s32Ret = SAMPLE_COMM_VI_Bind_VPSS(vi_pipe, vi_chn, vpss_grp);
+	if (s32Ret != CVI_SUCCESS) {
+		printf("my_cam_test: VI_Bind_VPSS cam%d failed %#x (pipe=%d chn=%d)\n",
+		       cam_idx, s32Ret, vi_pipe, vi_chn);
+		return s32Ret;
+	}
+
+	printf("my_cam_test: cam%d VI pipe %d chn %d -> VPSS grp %d\n",
+	       cam_idx, vi_pipe, vi_chn, vpss_grp);
 	return CVI_SUCCESS;
 }
 
 static CVI_S32 vi_bind_vpss(void)
 {
-	VI_PIPE vi_pipe = g_stViConfig.astViInfo[0].stPipeInfo.aPipe[0];
-	VI_CHN vi_chn = g_stViConfig.astViInfo[0].stChnInfo.ViChn;
-	CVI_S32 s32Ret;
-
-	s32Ret = SAMPLE_COMM_VI_Bind_VPSS(vi_pipe, vi_chn, VPSS_GRP_ID);
-	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VI_Bind_VPSS failed %#x (pipe=%d chn=%d)\n",
-		       s32Ret, vi_pipe, vi_chn);
-		return s32Ret;
-	}
-
-	printf("my_cam_test: VI pipe %d chn %d -> VPSS grp %d\n",
-	       vi_pipe, vi_chn, VPSS_GRP_ID);
-	return CVI_SUCCESS;
+	return vi_bind_vpss_cam(0);
 }
 
 static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *path)
@@ -344,7 +446,8 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 	return CVI_SUCCESS;
 }
 
-static CVI_S32 capture_vpss_frame(const char *path)
+static CVI_S32 capture_vpss_frame_grp(VPSS_GRP vpss_grp, const char *path,
+				      CVI_BOOL do_settle)
 {
 	VIDEO_FRAME_INFO_S stFrame;
 	CVI_S32 s32Ret;
@@ -352,27 +455,35 @@ static CVI_S32 capture_vpss_frame(const char *path)
 
 	memset(&stFrame, 0, sizeof(stFrame));
 
-	printf("my_cam_test: waiting %d s for AE/AWB...\n", ISP_SETTLE_SEC);
-	for (int i = 0; i < ISP_SETTLE_SEC && !g_stop; i++)
-		sleep(1);
-	if (g_stop)
-		return CVI_FAILURE;
+	if (do_settle) {
+		printf("my_cam_test: waiting %d s for AE/AWB...\n", ISP_SETTLE_SEC);
+		for (int i = 0; i < ISP_SETTLE_SEC && !g_stop; i++)
+			sleep(1);
+		if (g_stop)
+			return CVI_FAILURE;
+	}
 
-	for (attempt = 1; attempt <= 5; attempt++) {
-		s32Ret = CVI_VPSS_GetChnFrame(VPSS_GRP_ID, VPSS_CHN_ID, &stFrame, FRAME_WAIT_MS);
+	for (attempt = 1; attempt <= 10; attempt++) {
+		s32Ret = CVI_VPSS_GetChnFrame(vpss_grp, VPSS_CHN_ID, &stFrame, FRAME_WAIT_MS);
 		if (s32Ret == CVI_SUCCESS)
 			break;
-		printf("my_cam_test: GetChnFrame attempt %d failed %#x\n", attempt, s32Ret);
+		printf("my_cam_test: grp%d GetChnFrame attempt %d failed %#x\n",
+		       vpss_grp, attempt, s32Ret);
 	}
 
 	if (s32Ret != CVI_SUCCESS)
 		return s32Ret;
 
 	s32Ret = save_nv12_frame(&stFrame, path);
-	if (CVI_VPSS_ReleaseChnFrame(VPSS_GRP_ID, VPSS_CHN_ID, &stFrame) != CVI_SUCCESS)
-		printf("my_cam_test: ReleaseChnFrame failed\n");
+	if (CVI_VPSS_ReleaseChnFrame(vpss_grp, VPSS_CHN_ID, &stFrame) != CVI_SUCCESS)
+		printf("my_cam_test: grp%d ReleaseChnFrame failed\n", vpss_grp);
 
 	return s32Ret;
+}
+
+static CVI_S32 capture_vpss_frame(const char *path)
+{
+	return capture_vpss_frame_grp(VPSS_GRP_ID, path, CVI_TRUE);
 }
 
 static CVI_S32 phase3_run(void)
@@ -399,6 +510,71 @@ static CVI_S32 phase3_run(void)
 		return s32Ret;
 
 	return capture_vpss_frame(g_out_path);
+}
+
+static CVI_S32 phase7_run(void)
+{
+	static const char *paths[MAX_CAM] = { DUAL_CAM0_YUV, DUAL_CAM1_YUV };
+	PIC_SIZE_E enPicSize;
+	SIZE_S stSize;
+	CVI_S32 s32Ret;
+	int cam;
+
+	s32Ret = phase6a_validate();
+	if (s32Ret != CVI_SUCCESS)
+		return s32Ret;
+
+	for (cam = 0; cam < g_stViConfig.s32WorkingViNum; cam++) {
+		VPSS_GRP vpss_grp = g_dual_media_mode ?
+			(cam == 0 ? VPSS_ONLINE_GRP_0 : VPSS_ONLINE_GRP_1) : (VPSS_GRP)cam;
+		CVI_U8 vpss_dev = g_dual_media_mode ? 1 : 0;
+
+		s32Ret = SAMPLE_COMM_VI_GetSizeBySensor(
+			g_stViConfig.astViInfo[cam].stSnsInfo.enSnsType, &enPicSize);
+		if (s32Ret != CVI_SUCCESS)
+			return s32Ret;
+
+		s32Ret = SAMPLE_COMM_SYS_GetPicSize(enPicSize, &stSize);
+		if (s32Ret != CVI_SUCCESS)
+			return s32Ret;
+
+		s32Ret = vpss_init_grp(vpss_grp, &stSize, 1, vpss_dev);
+		if (s32Ret != CVI_SUCCESS)
+			return s32Ret;
+
+		if (!g_dual_media_mode) {
+			s32Ret = vi_bind_vpss_cam(cam);
+			if (s32Ret != CVI_SUCCESS)
+				return s32Ret;
+		} else if (cam == 0) {
+			s32Ret = vi_bind_vpss_cam(cam);
+			if (s32Ret != CVI_SUCCESS)
+				return s32Ret;
+			printf("my_cam_test: cam0 grp0 online u8VpssDev=1 + VI bind\n");
+		} else {
+			printf("my_cam_test: cam1 grp1 online u8VpssDev=1 (no VI bind)\n");
+		}
+	}
+
+	printf("my_cam_test: waiting %d s for dual AE/AWB...\n", DUAL_ISP_SETTLE_SEC);
+	for (int i = 0; i < DUAL_ISP_SETTLE_SEC && !g_stop; i++)
+		sleep(1);
+	if (g_stop)
+		return CVI_FAILURE;
+
+	for (cam = 0; cam < g_stViConfig.s32WorkingViNum; cam++) {
+		VPSS_GRP vpss_grp = g_dual_media_mode ?
+			(cam == 0 ? VPSS_ONLINE_GRP_0 : VPSS_ONLINE_GRP_1) : (VPSS_GRP)cam;
+
+		s32Ret = capture_vpss_frame_grp(vpss_grp, paths[cam], CVI_FALSE);
+		if (s32Ret != CVI_SUCCESS) {
+			printf("my_cam_test: cam%d capture failed %#x\n", cam, s32Ret);
+			return s32Ret;
+		}
+	}
+
+	printf("my_cam_test: dual VPSS capture OK\n");
+	return CVI_SUCCESS;
 }
 
 static void venc_fill_h264_cbr_defaults(chnInputCfg *pIc, int continuous)
@@ -744,18 +920,25 @@ static void vpss_deinit(void)
 	CVI_BOOL abChnEnable[VPSS_MAX_PHY_CHN_NUM] = {0};
 	VI_PIPE vi_pipe;
 	VI_CHN vi_chn;
+	int cam;
 
 	if (!g_vpss_up)
 		return;
 
-	vi_pipe = g_stViConfig.astViInfo[0].stPipeInfo.aPipe[0];
-	vi_chn = g_stViConfig.astViInfo[0].stChnInfo.ViChn;
-	SAMPLE_COMM_VI_UnBind_VPSS(vi_pipe, vi_chn, VPSS_GRP_ID);
-
 	abChnEnable[VPSS_CHN_ID] = CVI_TRUE;
-	SAMPLE_COMM_VPSS_Stop(VPSS_GRP_ID, abChnEnable);
+	for (cam = MAX_CAM - 1; cam >= 0; cam--) {
+		if (!(g_vpss_grp_mask & (1 << cam)))
+			continue;
+
+		vi_pipe = g_stViConfig.astViInfo[cam].stPipeInfo.aPipe[0];
+		vi_chn = g_stViConfig.astViInfo[cam].stChnInfo.ViChn;
+		SAMPLE_COMM_VI_UnBind_VPSS(vi_pipe, vi_chn, (VPSS_GRP)cam);
+		SAMPLE_COMM_VPSS_Stop((VPSS_GRP)cam, abChnEnable);
+		printf("my_cam_test: VPSS grp%d deinit done\n", cam);
+	}
+
+	g_vpss_grp_mask = 0;
 	g_vpss_up = CVI_FALSE;
-	printf("my_cam_test: VPSS deinit done\n");
 }
 
 static void vi_deinit(void)
@@ -781,7 +964,8 @@ static void usage(const char *prog)
 	printf("  Phase 4: VI -> VPSS -> VENC, write H.264 elementary stream\n");
 	printf("  Phase 5: VI -> VPSS -> VENC -> RTSP live preview\n");
 	printf("  Phase 6: dual VI/ISP init (requires dev_num=2 ini)\n");
-	printf("  -p  2, 3, 4, 5, or 6 (default %d)\n", DEFAULT_PHASE);
+	printf("  Phase 7: dual VI -> VPSS, capture NV12 per camera\n");
+	printf("  -p  2, 3, 4, 5, 6, or 7 (default %d)\n", DEFAULT_PHASE);
 	printf("  -o  phase 3 default %s; phase 4 default %s\n",
 	       DEFAULT_YUV_PATH, DEFAULT_H264_PATH);
 	printf("  -s  phase 2/6 hold seconds (default %d); phase 5 stream seconds (default %d)\n",
@@ -805,8 +989,8 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[opt], "-p") == 0 && opt + 1 < argc) {
 			g_phase = atoi(argv[++opt]);
-			if (g_phase < 2 || g_phase > 6) {
-				printf("my_cam_test: invalid phase %d (use 2-6)\n", g_phase);
+			if (g_phase < 2 || g_phase > 7) {
+				printf("my_cam_test: invalid phase %d (use 2-7)\n", g_phase);
 				return 1;
 			}
 			continue;
@@ -896,6 +1080,13 @@ int main(int argc, char **argv)
 		printf("holding %d s (dual ISP running)...\n", hold_sec);
 		for (int i = 0; i < hold_sec && !g_stop; i++)
 			sleep(1);
+	} else if (g_phase == 7) {
+		s32Ret = phase7_run();
+		if (s32Ret != CVI_SUCCESS) {
+			printf("my_cam_test: FAILED phase 7 %#x\n", s32Ret);
+			vi_deinit();
+			return 1;
+		}
 	} else {
 		printf("holding %d s (ISP running)...\n", hold_sec);
 		for (int i = 0; i < hold_sec && !g_stop; i++)
