@@ -4,8 +4,14 @@
 #ifndef CAM_RTSP_STREAM_H
 #define CAM_RTSP_STREAM_H
 
+typedef struct {
+	int frames[2];
+	int total_frames;
+} cam_rtsp_stream_stats;
+
 CVI_S32 cam_rtsp_start_server(void);
-CVI_S32 cam_rtsp_stream_venc(int stream_sec);
+/* stream_sec <= 0：持续推流直到 g_cam_stop */
+CVI_S32 cam_rtsp_stream_venc(int stream_sec, cam_rtsp_stream_stats *stats);
 void cam_rtsp_teardown(void);
 
 #endif /* CAM_RTSP_STREAM_H */

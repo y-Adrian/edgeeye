@@ -34,14 +34,14 @@ my_cam_resolve_sensor() {
 my_cam_stop_media() {
 	# 只匹配媒体二进制；勿用裸 my_cam_test，否则会命中 test_my_cam_test*.sh 自杀
 	ps | grep -v grep | grep -v test_my_cam_test | \
-		grep -E '/my_cam_test[[:space:]]|/sample_vi|rtsp_server|camera-test' | \
+		grep -E '/edgeeye_cam[[:space:]]|/my_cam_test[[:space:]]|/sample_vi|rtsp_server|camera-test' | \
 		awk '{print $1}' | while read -r p; do
 			[ -n "$p" ] || continue
 			kill "$p" 2>/dev/null || true
 		done
 
 	if command -v pidof >/dev/null 2>&1; then
-		for name in my_cam_test sample_vi rtsp_server camera-test; do
+		for name in edgeeye_cam my_cam_test sample_vi rtsp_server camera-test; do
 			for p in $(pidof "$name" 2>/dev/null); do
 				kill "$p" 2>/dev/null || true
 			done
@@ -62,6 +62,10 @@ my_cam_stop_media_deep() {
 		sh /root/stream/stop_rtsp.sh 2>/dev/null || true
 	elif [ -x /root/stop_rtsp.sh ]; then
 		sh /root/stop_rtsp.sh 2>/dev/null || true
+	fi
+	if [ -f /tmp/edgeeye_cam_rtsp.pid ]; then
+		kill "$(cat /tmp/edgeeye_cam_rtsp.pid)" 2>/dev/null || true
+		rm -f /tmp/edgeeye_cam_rtsp.pid
 	fi
 	if [ -f /tmp/my_cam_test_rtsp.pid ]; then
 		kill "$(cat /tmp/my_cam_test_rtsp.pid)" 2>/dev/null || true

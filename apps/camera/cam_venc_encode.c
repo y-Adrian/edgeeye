@@ -8,6 +8,8 @@
 
 #include "cvi_venc.h"
 #include "cam_app_context.h"
+#include "cam_log.h"
+#include "cam_output_res.h"
 #include "cam_pipeline_config.h"
 #include "cam_venc_encode.h"
 #include "cam_vpss_capture.h"
@@ -90,6 +92,14 @@ static void venc_release_stream(VENC_CHN venc_chn, VENC_STREAM_S *pstStream)
 	pstStream->pstPack = NULL;
 }
 
+static void venc_apply_output_bitrate(chnInputCfg *pIc)
+{
+	cam_output_res_e res = cam_output_res_get();
+
+	pIc->bitrate = cam_output_res_bitrate_kbps(res);
+	pIc->maxbitrate = cam_output_res_max_bitrate_kbps(res);
+}
+
 CVI_S32 cam_venc_init_chn(VENC_CHN venc_chn, PIC_SIZE_E enPicSize, VPSS_GRP vpss_grp,
 			  int continuous)
 {
@@ -98,11 +108,12 @@ CVI_S32 cam_venc_init_chn(VENC_CHN venc_chn, PIC_SIZE_E enPicSize, VPSS_GRP vpss
 	CVI_S32 s32Ret;
 
 	venc_fill_h264_cbr_defaults(&ic, continuous);
+	venc_apply_output_bitrate(&ic);
 	ic.vpssGrp = vpss_grp;
 
 	s32Ret = SAMPLE_COMM_VENC_GetGopAttr(VENC_GOPMODE_NORMALP, &stGop);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VENC_GetGopAttr failed %#x\n", s32Ret);
+		CAM_LOG("VENC_GetGopAttr failed %#x\n", s32Ret);
 		return s32Ret;
 	}
 
@@ -110,7 +121,7 @@ CVI_S32 cam_venc_init_chn(VENC_CHN venc_chn, PIC_SIZE_E enPicSize, VPSS_GRP vpss
 					SAMPLE_RC_CBR, CVI_H264_PROFILE_DEFAULT,
 					CVI_FALSE, &stGop);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VENC_Start chn%d failed %#x\n", venc_chn, s32Ret);
+		CAM_LOG("VENC_Start chn%d failed %#x\n", venc_chn, s32Ret);
 		return s32Ret;
 	}
 
@@ -119,8 +130,17 @@ CVI_S32 cam_venc_init_chn(VENC_CHN venc_chn, PIC_SIZE_E enPicSize, VPSS_GRP vpss
 	g_cam_venc_stream_timeout[venc_chn] = ic.getstream_timeout;
 	g_cam_venc_mask |= (1 << venc_chn);
 	g_cam_venc_up = CVI_TRUE;
-	printf("my_cam_test: VENC chn%d H264 ready (grp%d pic_size=%d)\n",
-	       venc_chn, vpss_grp, enPicSize);
+	{
+		SIZE_S stEnc;
+
+		if (SAMPLE_COMM_SYS_GetPicSize(enPicSize, &stEnc) == CVI_SUCCESS)
+			CAM_LOG("VENC chn%d H264 %ux%u ready (grp%d bitrate=%uK)\n",
+			       venc_chn, stEnc.u32Width, stEnc.u32Height,
+			       vpss_grp, ic.bitrate);
+		else
+			CAM_LOG("VENC chn%d H264 ready (grp%d pic_size=%d bitrate=%uK)\n",
+			       venc_chn, vpss_grp, enPicSize, ic.bitrate);
+	}
 	return CVI_SUCCESS;
 }
 
@@ -130,7 +150,7 @@ CVI_S32 cam_venc_init_single(PIC_SIZE_E enPicSize, int continuous)
 }
 
 CVI_S32 cam_venc_capture_chn(VENC_CHN venc_chn, const char *path, CVI_BOOL do_settle,
-			     CVI_BOOL save_from_idr)
+			     CVI_BOOL save_from_idr, const cam_venc_save_opts *opts)
 {
 	FILE *fp;
 	VENC_STREAM_S stStream;
@@ -139,18 +159,22 @@ CVI_S32 cam_venc_capture_chn(VENC_CHN venc_chn, const char *path, CVI_BOOL do_se
 	CVI_S32 s32Ret;
 	int timeout_ms = g_cam_venc_stream_timeout[venc_chn];
 	CVI_BOOL saving = save_from_idr ? CVI_FALSE : CVI_TRUE;
+	cam_venc_save_opts local_opts = { 10, 40, 1024 };
+
+	if (!opts)
+		opts = &local_opts;
 
 	if (timeout_ms <= 0)
 		timeout_ms = CAM_FRAME_WAIT_MS;
 
 	fp = fopen(path, "wb");
 	if (!fp) {
-		printf("my_cam_test: fopen(%s) failed\n", path);
+		CAM_LOG("fopen(%s) failed\n", path);
 		return CVI_FAILURE;
 	}
 
 	if (do_settle) {
-		printf("my_cam_test: waiting %d s for AE/AWB...\n", CAM_ISP_SETTLE_SEC);
+		CAM_LOG("waiting %d s for AE/AWB...\n", CAM_ISP_SETTLE_SEC);
 		for (int i = 0; i < CAM_ISP_SETTLE_SEC && !g_cam_stop; i++)
 			sleep(1);
 		if (g_cam_stop) {
@@ -159,11 +183,11 @@ CVI_S32 cam_venc_capture_chn(VENC_CHN venc_chn, const char *path, CVI_BOOL do_se
 		}
 	}
 
-	for (int attempt = 0; streams < CAM_VENC_SAVE_TARGET_STREAMS &&
-	     attempt < CAM_VENC_SAVE_MAX_ATTEMPTS && !g_cam_stop; attempt++) {
+	for (int attempt = 0; streams < opts->target_streams &&
+	     attempt < opts->max_attempts && !g_cam_stop; attempt++) {
 		s32Ret = venc_fetch_stream(venc_chn, &stStream, timeout_ms);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: chn%d GetStream attempt %d failed %#x\n",
+			CAM_LOG("chn%d GetStream attempt %d failed %#x\n",
 			       venc_chn, attempt + 1, s32Ret);
 			usleep(100000);
 			continue;
@@ -175,7 +199,7 @@ CVI_S32 cam_venc_capture_chn(VENC_CHN venc_chn, const char *path, CVI_BOOL do_se
 				continue;
 			}
 			saving = CVI_TRUE;
-			printf("my_cam_test: chn%d start save from IDR/I slice\n", venc_chn);
+			CAM_LOG("chn%d start save from IDR/I slice\n", venc_chn);
 		}
 
 		for (CVI_U32 i = 0; i < stStream.u32PackCount; i++) {
@@ -187,7 +211,7 @@ CVI_S32 cam_venc_capture_chn(VENC_CHN venc_chn, const char *path, CVI_BOOL do_se
 		s32Ret = SAMPLE_COMM_VENC_SaveStream(PT_H264, fp, &stStream);
 		venc_release_stream(venc_chn, &stStream);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: chn%d SaveStream failed %#x\n", venc_chn, s32Ret);
+			CAM_LOG("chn%d SaveStream failed %#x\n", venc_chn, s32Ret);
 			fclose(fp);
 			return s32Ret;
 		}
@@ -197,20 +221,20 @@ CVI_S32 cam_venc_capture_chn(VENC_CHN venc_chn, const char *path, CVI_BOOL do_se
 
 	fclose(fp);
 
-	if (!saving || streams == 0 || total_bytes < 1024) {
-		printf("my_cam_test: chn%d H264 too small (idr=%d streams=%d bytes=%zu)\n",
+	if (!saving || streams == 0 || total_bytes < opts->min_bytes) {
+		CAM_LOG("chn%d H264 too small (idr=%d streams=%d bytes=%zu)\n",
 		       venc_chn, saving, streams, total_bytes);
 		return CVI_FAILURE;
 	}
 
-	printf("my_cam_test: saved H264 chn%d -> %s (%zu bytes, %d streams)\n",
+	CAM_LOG("saved H264 chn%d -> %s (%zu bytes, %d streams)\n",
 	       venc_chn, path, total_bytes, streams);
 	return CVI_SUCCESS;
 }
 
-CVI_S32 cam_venc_capture_single(const char *path)
+CVI_S32 cam_venc_capture_single(const char *path, const cam_venc_save_opts *opts)
 {
-	return cam_venc_capture_chn(CAM_VENC_CHN_ID, path, CVI_TRUE, CVI_FALSE);
+	return cam_venc_capture_chn(CAM_VENC_CHN_ID, path, CVI_TRUE, CVI_FALSE, opts);
 }
 
 void cam_venc_teardown(void)
@@ -232,7 +256,7 @@ void cam_venc_teardown(void)
 
 		SAMPLE_COMM_VPSS_UnBind_VENC(cam_vpss_dual_grp(cam), CAM_VPSS_CHN_ID, (VENC_CHN)cam);
 		SAMPLE_COMM_VENC_Stop((VENC_CHN)cam);
-		printf("my_cam_test: VENC chn%d deinit done\n", cam);
+		CAM_LOG("VENC chn%d deinit done\n", cam);
 	}
 
 	g_cam_venc_mask = 0;

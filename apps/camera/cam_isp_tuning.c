@@ -5,9 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cvi_bin.h"
 #include "cam_isp_tuning.h"
+#include "cam_log.h"
 #include "cam_pipeline_config.h"
+#include "cvi_bin.h"
 
 CVI_S32 cam_isp_load_pq_bin(enum CVI_BIN_SECTION_ID isp_id, const char *path)
 {
@@ -19,7 +20,7 @@ CVI_S32 cam_isp_load_pq_bin(enum CVI_BIN_SECTION_ID isp_id, const char *path)
 
 	fp = fopen(path, "rb");
 	if (!fp) {
-		printf("my_cam_test: PQ open pipe%d %s failed\n", pipe, path);
+		CAM_LOG("PQ open pipe%d %s failed\n", pipe, path);
 		return CVI_FAILURE;
 	}
 
@@ -28,7 +29,7 @@ CVI_S32 cam_isp_load_pq_bin(enum CVI_BIN_SECTION_ID isp_id, const char *path)
 	rewind(fp);
 	if (file_size == 0) {
 		fclose(fp);
-		printf("my_cam_test: PQ empty pipe%d %s\n", pipe, path);
+		CAM_LOG("PQ empty pipe%d %s\n", pipe, path);
 		return CVI_FAILURE;
 	}
 
@@ -40,7 +41,7 @@ CVI_S32 cam_isp_load_pq_bin(enum CVI_BIN_SECTION_ID isp_id, const char *path)
 	if (fread(buf, 1, file_size, fp) != file_size) {
 		free(buf);
 		fclose(fp);
-		printf("my_cam_test: PQ read pipe%d %s failed\n", pipe, path);
+		CAM_LOG("PQ read pipe%d %s failed\n", pipe, path);
 		return CVI_FAILURE;
 	}
 	fclose(fp);
@@ -48,11 +49,11 @@ CVI_S32 cam_isp_load_pq_bin(enum CVI_BIN_SECTION_ID isp_id, const char *path)
 	s32Ret = CVI_BIN_LoadParamFromBinEx(isp_id, buf, file_size);
 	free(buf);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: PQ load pipe%d <- %s failed %#x\n", pipe, path, s32Ret);
+		CAM_LOG("PQ load pipe%d <- %s failed %#x\n", pipe, path, s32Ret);
 		return s32Ret;
 	}
 
-	printf("my_cam_test: PQ loaded pipe%d <- %s\n", pipe, path);
+	CAM_LOG("PQ loaded pipe%d <- %s\n", pipe, path);
 	return CVI_SUCCESS;
 }
 
@@ -70,12 +71,12 @@ static CVI_S32 dual_comm_vi_create_isp_with_pq(SAMPLE_VI_CONFIG_S *pstViConfig)
 
 		s32Ret = SAMPLE_COMM_VI_StartIsp(pstViInfo);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: StartIsp pipe%d failed %#x\n", ViPipe, s32Ret);
+			CAM_LOG("StartIsp pipe%d failed %#x\n", ViPipe, s32Ret);
 			return s32Ret;
 		}
 
 		if (ViPipe < 0 || ViPipe >= CAM_MAX_SENSORS) {
-			printf("my_cam_test: bad ViPipe %d for PQ\n", ViPipe);
+			CAM_LOG("bad ViPipe %d for PQ\n", ViPipe);
 			return CVI_FAILURE;
 		}
 
@@ -87,11 +88,11 @@ static CVI_S32 dual_comm_vi_create_isp_with_pq(SAMPLE_VI_CONFIG_S *pstViConfig)
 
 	s32Ret = SAMPLE_COMM_ISP_Run(0);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: ISP_Run(0) failed %#x\n", s32Ret);
+		CAM_LOG("ISP_Run(0) failed %#x\n", s32Ret);
 		return s32Ret;
 	}
 
-	printf("my_cam_test: dual ISP OK (per-pipe PQ, ISP_Run pipe0)\n");
+	CAM_LOG("dual ISP OK (per-pipe PQ, ISP_Run pipe0)\n");
 	return CVI_SUCCESS;
 }
 
@@ -110,7 +111,7 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 	/* 与 SAMPLE_PLAT_VI_INIT 对齐：须先 StartSensor/MIPI，否则 StartViChn ION 失败 */
 	s32Ret = SAMPLE_COMM_VI_StartSensor(pstViConfig);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: StartSensor failed %#x\n", s32Ret);
+		CAM_LOG("StartSensor failed %#x\n", s32Ret);
 		return s32Ret;
 	}
 
@@ -118,20 +119,20 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 		ViDev = i;
 		s32Ret = SAMPLE_COMM_VI_StartDev(&pstViConfig->astViInfo[ViDev]);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: VI_StartDev failed %#x\n", s32Ret);
+			CAM_LOG("VI_StartDev failed %#x\n", s32Ret);
 			goto err_destroy_vi;
 		}
 	}
 
 	s32Ret = SAMPLE_COMM_VI_StartMIPI(pstViConfig);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: StartMIPI failed %#x\n", s32Ret);
+		CAM_LOG("StartMIPI failed %#x\n", s32Ret);
 		goto err_destroy_vi;
 	}
 
 	s32Ret = SAMPLE_COMM_VI_SensorProbe(pstViConfig);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: SensorProbe failed %#x\n", s32Ret);
+		CAM_LOG("SensorProbe failed %#x\n", s32Ret);
 		goto err_destroy_vi;
 	}
 
@@ -151,12 +152,12 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 
 		s32Ret = SAMPLE_COMM_VI_GetSizeBySensor(sns_type, &enPicSize);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: GetSizeBySensor pipe%d failed %#x\n", i, s32Ret);
+			CAM_LOG("GetSizeBySensor pipe%d failed %#x\n", i, s32Ret);
 			goto err_destroy_vi;
 		}
 		s32Ret = SAMPLE_COMM_SYS_GetPicSize(enPicSize, &stSize);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: GetPicSize pipe%d failed %#x\n", i, s32Ret);
+			CAM_LOG("GetPicSize pipe%d failed %#x\n", i, s32Ret);
 			goto err_destroy_vi;
 		}
 
@@ -173,19 +174,19 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 			ViPipe = pstViInfo->stPipeInfo.aPipe[j];
 			s32Ret = CVI_VI_CreatePipe(ViPipe, &stPipeAttr);
 			if (s32Ret != CVI_SUCCESS) {
-				printf("my_cam_test: CreatePipe %d failed %#x\n", ViPipe, s32Ret);
+				CAM_LOG("CreatePipe %d failed %#x\n", ViPipe, s32Ret);
 				goto err_destroy_vi;
 			}
 
 			s32Ret = CVI_VI_StartPipe(ViPipe);
 			if (s32Ret != CVI_SUCCESS) {
-				printf("my_cam_test: StartPipe %d failed %#x\n", ViPipe, s32Ret);
+				CAM_LOG("StartPipe %d failed %#x\n", ViPipe, s32Ret);
 				goto err_destroy_vi;
 			}
 
 			s32Ret = CVI_VI_GetPipeAttr(ViPipe, &stPipeAttr);
 			if (s32Ret != CVI_SUCCESS) {
-				printf("my_cam_test: GetPipeAttr %d failed %#x\n", ViPipe, s32Ret);
+				CAM_LOG("GetPipeAttr %d failed %#x\n", ViPipe, s32Ret);
 				goto err_destroy_vi;
 			}
 		}
@@ -199,13 +200,12 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 
 	s32Ret = SAMPLE_COMM_VI_StartViChn(pstViConfig);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: StartViChn failed %#x\n", s32Ret);
+		CAM_LOG("StartViChn failed %#x\n", s32Ret);
 		SAMPLE_COMM_VI_DestroyIsp(pstViConfig);
 		goto err_destroy_vi;
 	}
 
-	printf("my_cam_test: dual VI/ISP/chn OK (%d sensors)\n",
-	       pstViConfig->s32WorkingViNum);
+	CAM_LOG("dual VI/ISP/chn OK (%d sensors)\n", pstViConfig->s32WorkingViNum);
 	return CVI_SUCCESS;
 
 err_destroy_vi:

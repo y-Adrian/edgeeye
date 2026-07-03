@@ -118,7 +118,18 @@ def mpi_compile_flags() -> str:
 
 
 def mpi_sources() -> list[str]:
-    camera = os.path.join(REPO, "apps", "camera", "my_cam_test.c")
+    cam_dir = os.path.join(REPO, "apps", "camera")
+    test_dir = os.path.join(REPO, "tests", "camera", "my_cam_test")
+    cam_lib = [
+        "cam_app_context.c",
+        "cam_isp_tuning.c",
+        "cam_pipeline_mode.c",
+        "cam_vi_bringup.c",
+        "cam_vpss_capture.c",
+        "cam_venc_encode.c",
+        "cam_rtsp_stream.c",
+    ]
+    test_srcs = ["my_cam_test.c", "cam_test_phases.c"]
     common_dir = os.path.join(CVI_MPI, "sample", "common")
     common_names = [
         "sample_common_sys.c",
@@ -132,7 +143,9 @@ def mpi_sources() -> list[str]:
         os.path.join(CVI_MPI, "sample", "sensor_test", "sample_sensor_test.c"),
         os.path.join(DUO_SDK, "tdl_sdk", "sample_video", "sample_vi_fd.c"),
     ]
-    files = [camera] + [os.path.join(common_dir, n) for n in common_names]
+    files = [os.path.join(cam_dir, n) for n in cam_lib]
+    files += [os.path.join(test_dir, n) for n in test_srcs]
+    files += [os.path.join(common_dir, n) for n in common_names]
     files += [p for p in sdk_samples if os.path.isfile(p)]
     return files
 

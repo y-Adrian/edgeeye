@@ -1,5 +1,5 @@
 /*
- * cam_app_context.h — 测试程序运行时全局状态
+ * cam_app_context.h — 管线运行时全局状态
  */
 #ifndef CAM_APP_CONTEXT_H
 #define CAM_APP_CONTEXT_H
@@ -13,9 +13,6 @@
 extern SAMPLE_VI_CONFIG_S g_cam_vi_cfg;
 extern volatile sig_atomic_t g_cam_stop;
 extern int g_cam_verbose;
-extern int g_cam_phase;
-extern int g_cam_out_path_set;
-extern char g_cam_out_path[256];
 extern int g_cam_rtsp_port;
 extern char g_cam_rtsp_url[128];
 extern CVI_BOOL g_cam_dual_media_mode;

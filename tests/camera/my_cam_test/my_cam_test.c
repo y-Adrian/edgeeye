@@ -1,5 +1,5 @@
 /*
- * my_cam_test.c — EdgeEye 摄像头渐进验收（单摄/双摄由 sensor_cfg.ini dev_num 决定）
+ * my_cam_test.c — EdgeEye 摄像头渐进验收入口（测试程序，非产品库）
  */
 #include <signal.h>
 #include <stdio.h>
@@ -8,14 +8,20 @@
 #include <unistd.h>
 
 #include "cam_app_context.h"
-#include "cam_pipeline_config.h"
 #include "cam_pipeline_mode.h"
+#include "cam_test_config.h"
 #include "cam_test_phases.h"
 #include "cam_vi_bringup.h"
+
+static volatile sig_atomic_t g_test_stop;
+static int g_test_phase = CAM_DEFAULT_PHASE;
+static int g_test_out_path_set;
+static char g_test_out_path[256] = CAM_DEFAULT_YUV_PATH;
 
 static void handle_signal(int signo)
 {
 	(void)signo;
+	g_test_stop = 1;
 	g_cam_stop = 1;
 }
 
@@ -46,14 +52,14 @@ static CVI_S32 run_isp_hold(int hold_sec, int phase_label)
 {
 	printf("holding %d s (ISP running, %s)...\n", hold_sec,
 	       cam_is_dual() ? "dual" : "single");
-	for (int i = 0; i < hold_sec && !g_cam_stop; i++)
+	for (int i = 0; i < hold_sec && !g_test_stop; i++)
 		sleep(1);
-	if (g_cam_stop)
+	if (g_test_stop)
 		return CVI_FAILURE;
 
-	printf("my_cam_test: PASSED (phase %d)\n", phase_label);
+	printf("%s: PASSED (phase %d)\n", CAM_TEST_LOG_TAG, phase_label);
 	fflush(stdout);
-	if (cam_should_fast_exit(phase_label))
+	if (cam_test_should_fast_exit(phase_label, cam_is_dual()))
 		_exit(0);
 	return CVI_SUCCESS;
 }
@@ -62,6 +68,7 @@ int main(int argc, char **argv)
 {
 	int hold_sec = CAM_DEFAULT_HOLD_SEC;
 	int stream_sec = CAM_DEFAULT_STREAM_SEC;
+	cam_vi_bringup_opts bringup_opts;
 	int opt;
 	CVI_S32 s32Ret;
 
@@ -71,9 +78,10 @@ int main(int argc, char **argv)
 			return 0;
 		}
 		if (strcmp(argv[opt], "-p") == 0 && opt + 1 < argc) {
-			g_cam_phase = atoi(argv[++opt]);
-			if (g_cam_phase < 2 || g_cam_phase > 8) {
-				printf("my_cam_test: invalid phase %d (use 2-8)\n", g_cam_phase);
+			g_test_phase = atoi(argv[++opt]);
+			if (g_test_phase < 2 || g_test_phase > 8) {
+				printf("%s: invalid phase %d (use 2-8)\n",
+				       CAM_TEST_LOG_TAG, g_test_phase);
 				return 1;
 			}
 			continue;
@@ -86,15 +94,16 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (strcmp(argv[opt], "-o") == 0 && opt + 1 < argc) {
-			strncpy(g_cam_out_path, argv[++opt], sizeof(g_cam_out_path) - 1);
-			g_cam_out_path[sizeof(g_cam_out_path) - 1] = '\0';
-			g_cam_out_path_set = 1;
+			strncpy(g_test_out_path, argv[++opt], sizeof(g_test_out_path) - 1);
+			g_test_out_path[sizeof(g_test_out_path) - 1] = '\0';
+			g_test_out_path_set = 1;
 			continue;
 		}
 		if (strcmp(argv[opt], "-P") == 0 && opt + 1 < argc) {
 			g_cam_rtsp_port = atoi(argv[++opt]);
 			if (g_cam_rtsp_port < 1 || g_cam_rtsp_port > 65535) {
-				printf("my_cam_test: invalid RTSP port %d\n", g_cam_rtsp_port);
+				printf("%s: invalid RTSP port %d\n",
+				       CAM_TEST_LOG_TAG, g_cam_rtsp_port);
 				return 1;
 			}
 			continue;
@@ -116,33 +125,34 @@ int main(int argc, char **argv)
 	signal(SIGINT, handle_signal);
 	signal(SIGTERM, handle_signal);
 
-	if (!g_cam_out_path_set) {
-		if (g_cam_phase == 4 || g_cam_phase == 8)
-			strncpy(g_cam_out_path, CAM_DEFAULT_H264_PATH, sizeof(g_cam_out_path) - 1);
-		else if (g_cam_phase == 3 || g_cam_phase == 7)
-			strncpy(g_cam_out_path, CAM_DEFAULT_YUV_PATH, sizeof(g_cam_out_path) - 1);
-		g_cam_out_path[sizeof(g_cam_out_path) - 1] = '\0';
+	if (!g_test_out_path_set) {
+		if (g_test_phase == 4 || g_test_phase == 8)
+			strncpy(g_test_out_path, CAM_DEFAULT_H264_PATH, sizeof(g_test_out_path) - 1);
+		else if (g_test_phase == 3 || g_test_phase == 7)
+			strncpy(g_test_out_path, CAM_DEFAULT_YUV_PATH, sizeof(g_test_out_path) - 1);
+		g_test_out_path[sizeof(g_test_out_path) - 1] = '\0';
 	}
 
-	printf("=== EdgeEye my_cam_test (phase %d) ===\n", g_cam_phase);
+	printf("=== EdgeEye %s (phase %d) ===\n", CAM_TEST_LOG_TAG, g_test_phase);
 
-	s32Ret = cam_vi_bringup_init();
+	bringup_opts = cam_test_bringup_opts(g_test_phase);
+	s32Ret = cam_vi_bringup_init(&bringup_opts);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: FAILED init %#x\n", s32Ret);
+		printf("%s: FAILED init %#x\n", CAM_TEST_LOG_TAG, s32Ret);
 		return 1;
 	}
 
-	switch (g_cam_phase) {
+	switch (g_test_phase) {
 	case 2:
 		s32Ret = run_isp_hold(hold_sec, 2);
 		break;
 	case 3:
 	case 7:
-		s32Ret = cam_test_capture_yuv_run();
+		s32Ret = cam_test_capture_yuv_run(g_test_out_path);
 		break;
 	case 4:
 	case 8:
-		s32Ret = cam_test_capture_h264_run();
+		s32Ret = cam_test_capture_h264_run(g_test_out_path);
 		break;
 	case 5:
 		s32Ret = cam_test_rtsp_run(stream_sec);
@@ -153,24 +163,24 @@ int main(int argc, char **argv)
 			s32Ret = run_isp_hold(hold_sec, 6);
 		break;
 	default:
-		printf("my_cam_test: invalid phase %d\n", g_cam_phase);
+		printf("%s: invalid phase %d\n", CAM_TEST_LOG_TAG, g_test_phase);
 		s32Ret = CVI_FAILURE;
 		break;
 	}
 
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: FAILED phase %d %#x\n", g_cam_phase, s32Ret);
+		printf("%s: FAILED phase %d %#x\n", CAM_TEST_LOG_TAG, g_test_phase, s32Ret);
 		cam_vi_bringup_deinit();
 		return 1;
 	}
 
-	if (g_cam_phase == 8 && cam_is_dual()) {
-		printf("my_cam_test: PASSED (phase 8)\n");
+	if (g_test_phase == 8 && cam_is_dual()) {
+		printf("%s: PASSED (phase 8)\n", CAM_TEST_LOG_TAG);
 		fflush(stdout);
 		_exit(0);
 	}
 
 	cam_vi_bringup_deinit();
-	printf("my_cam_test: PASSED (phase %d)\n", g_cam_phase);
+	printf("%s: PASSED (phase %d)\n", CAM_TEST_LOG_TAG, g_test_phase);
 	return 0;
 }

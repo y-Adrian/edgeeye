@@ -7,16 +7,23 @@
 
 #include "cvi_sys.h"
 #include "cam_app_context.h"
+#include "cam_log.h"
+#include "cam_output_res.h"
 #include "cam_pipeline_config.h"
 #include "cam_vpss_capture.h"
 
-CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSize, CVI_U32 depth,
-			  CVI_U8 vpss_dev)
+CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSrcSize,
+			  const SIZE_S *pstOutSize, CVI_U32 depth, CVI_U8 vpss_dev)
 {
 	VPSS_GRP_ATTR_S stVpssGrpAttr;
 	VPSS_CHN_ATTR_S astVpssChnAttr[VPSS_MAX_PHY_CHN_NUM];
 	CVI_BOOL abChnEnable[VPSS_MAX_PHY_CHN_NUM] = {0};
+	SIZE_S stOut;
 	CVI_S32 s32Ret;
+
+	if (!pstOutSize)
+		pstOutSize = pstSrcSize;
+	stOut = *pstOutSize;
 
 	memset(&stVpssGrpAttr, 0, sizeof(stVpssGrpAttr));
 	memset(astVpssChnAttr, 0, sizeof(astVpssChnAttr));
@@ -24,12 +31,12 @@ CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSize, CVI_U32 dept
 	stVpssGrpAttr.stFrameRate.s32SrcFrameRate = -1;
 	stVpssGrpAttr.stFrameRate.s32DstFrameRate = -1;
 	stVpssGrpAttr.enPixelFormat = SAMPLE_PIXEL_FORMAT;
-	stVpssGrpAttr.u32MaxW = pstSize->u32Width;
-	stVpssGrpAttr.u32MaxH = pstSize->u32Height;
+	stVpssGrpAttr.u32MaxW = pstSrcSize->u32Width;
+	stVpssGrpAttr.u32MaxH = pstSrcSize->u32Height;
 	stVpssGrpAttr.u8VpssDev = vpss_dev;
 
-	astVpssChnAttr[CAM_VPSS_CHN_ID].u32Width = pstSize->u32Width;
-	astVpssChnAttr[CAM_VPSS_CHN_ID].u32Height = pstSize->u32Height;
+	astVpssChnAttr[CAM_VPSS_CHN_ID].u32Width = stOut.u32Width;
+	astVpssChnAttr[CAM_VPSS_CHN_ID].u32Height = stOut.u32Height;
 	astVpssChnAttr[CAM_VPSS_CHN_ID].enVideoFormat = VIDEO_FORMAT_LINEAR;
 	astVpssChnAttr[CAM_VPSS_CHN_ID].enPixelFormat = SAMPLE_PIXEL_FORMAT;
 	astVpssChnAttr[CAM_VPSS_CHN_ID].stFrameRate.s32SrcFrameRate = -1;
@@ -44,33 +51,40 @@ CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSize, CVI_U32 dept
 
 	s32Ret = SAMPLE_COMM_VPSS_Init(vpss_grp, abChnEnable, &stVpssGrpAttr, astVpssChnAttr);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VPSS_Init grp%d failed %#x\n", vpss_grp, s32Ret);
+		CAM_LOG("VPSS_Init grp%d failed %#x\n", vpss_grp, s32Ret);
 		return s32Ret;
 	}
 
 	s32Ret = SAMPLE_COMM_VPSS_Start(vpss_grp, abChnEnable, &stVpssGrpAttr, astVpssChnAttr);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VPSS_Start grp%d failed %#x\n", vpss_grp, s32Ret);
+		CAM_LOG("VPSS_Start grp%d failed %#x\n", vpss_grp, s32Ret);
 		return s32Ret;
 	}
 
 	if (g_cam_dual_media_mode) {
 		s32Ret = CVI_VPSS_SetGrpParamfromBin(vpss_grp, CAM_VPSS_CHN_ID);
 		if (s32Ret != CVI_SUCCESS)
-			printf("my_cam_test: SetGrpParamfromBin grp%d %#x (non-fatal)\n",
+			CAM_LOG("SetGrpParamfromBin grp%d %#x (non-fatal)\n",
 			       vpss_grp, s32Ret);
 	}
 
 	g_cam_vpss_grp_mask |= (1 << vpss_grp);
 	g_cam_vpss_up = CVI_TRUE;
-	printf("my_cam_test: VPSS grp%d %ux%u ready\n", vpss_grp,
-	       pstSize->u32Width, pstSize->u32Height);
+	if (stOut.u32Width != pstSrcSize->u32Width ||
+	    stOut.u32Height != pstSrcSize->u32Height)
+		CAM_LOG("VPSS grp%d %ux%u -> %ux%u ready\n", vpss_grp,
+		       pstSrcSize->u32Width, pstSrcSize->u32Height,
+		       stOut.u32Width, stOut.u32Height);
+	else
+		CAM_LOG("VPSS grp%d %ux%u ready\n", vpss_grp,
+		       stOut.u32Width, stOut.u32Height);
 	return CVI_SUCCESS;
 }
 
-CVI_S32 cam_vpss_init_single(const SIZE_S *pstSize, CVI_U32 depth)
+CVI_S32 cam_vpss_init_single(const SIZE_S *pstSrcSize, const SIZE_S *pstOutSize,
+			     CVI_U32 depth)
 {
-	return cam_vpss_init_grp(CAM_VPSS_GRP_ID, pstSize, depth, 0);
+	return cam_vpss_init_grp(CAM_VPSS_GRP_ID, pstSrcSize, pstOutSize, depth, 0);
 }
 
 CVI_S32 cam_vpss_bind_cam(int cam_idx)
@@ -82,12 +96,12 @@ CVI_S32 cam_vpss_bind_cam(int cam_idx)
 
 	s32Ret = SAMPLE_COMM_VI_Bind_VPSS(vi_pipe, vi_chn, vpss_grp);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VI_Bind_VPSS cam%d failed %#x (pipe=%d chn=%d)\n",
+		CAM_LOG("VI_Bind_VPSS cam%d failed %#x (pipe=%d chn=%d)\n",
 		       cam_idx, s32Ret, vi_pipe, vi_chn);
 		return s32Ret;
 	}
 
-	printf("my_cam_test: cam%d VI pipe %d chn %d -> VPSS grp %d\n",
+	CAM_LOG("cam%d VI pipe %d chn %d -> VPSS grp %d\n",
 	       cam_idx, vi_pipe, vi_chn, vpss_grp);
 	return CVI_SUCCESS;
 }
@@ -110,7 +124,7 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 
 	fp = fopen(path, "wb");
 	if (!fp) {
-		printf("my_cam_test: fopen(%s) failed\n", path);
+		CAM_LOG("fopen(%s) failed\n", path);
 		return CVI_FAILURE;
 	}
 
@@ -120,7 +134,7 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 	vir_addr = CVI_SYS_Mmap(pstFrame->stVFrame.u64PhyAddr[0], image_size);
 	if (!vir_addr) {
 		fclose(fp);
-		printf("my_cam_test: Mmap frame failed\n");
+		CAM_LOG("Mmap frame failed\n");
 		return CVI_FAILURE;
 	}
 
@@ -133,7 +147,7 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 
 		for (CVI_U32 n = 0; n < y_pixels; n += 64)
 			sum += y[n];
-		printf("my_cam_test: frame Y mean(sampled)=%llu (0=black 128=gray 255=white)\n",
+		CAM_LOG("frame Y mean(sampled)=%llu (0=black 128=gray 255=white)\n",
 		       (unsigned long long)(sum / (y_pixels / 64 + 1)));
 	}
 
@@ -148,7 +162,7 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 		if (fwrite(plane, write_len, 1, fp) != 1) {
 			CVI_SYS_Munmap(vir_addr, image_size);
 			fclose(fp);
-			printf("my_cam_test: fwrite plane %d failed\n", i);
+			CAM_LOG("fwrite plane %d failed\n", i);
 			return CVI_FAILURE;
 		}
 		plane_offset += pstFrame->stVFrame.u32Length[i];
@@ -157,7 +171,7 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 	CVI_SYS_Munmap(vir_addr, image_size);
 	fclose(fp);
 
-	printf("my_cam_test: saved %ux%u NV12 -> %s (%zu bytes payload)\n",
+	CAM_LOG("saved %ux%u NV12 -> %s (%zu bytes payload)\n",
 	       pstFrame->stVFrame.u32Width, pstFrame->stVFrame.u32Height,
 	       path, image_size);
 	return CVI_SUCCESS;
@@ -172,7 +186,7 @@ CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_se
 	memset(&stFrame, 0, sizeof(stFrame));
 
 	if (do_settle) {
-		printf("my_cam_test: waiting %d s for AE/AWB...\n", CAM_ISP_SETTLE_SEC);
+		CAM_LOG("waiting %d s for AE/AWB...\n", CAM_ISP_SETTLE_SEC);
 		for (int i = 0; i < CAM_ISP_SETTLE_SEC && !g_cam_stop; i++)
 			sleep(1);
 		if (g_cam_stop)
@@ -183,7 +197,7 @@ CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_se
 		s32Ret = CVI_VPSS_GetChnFrame(vpss_grp, CAM_VPSS_CHN_ID, &stFrame, CAM_FRAME_WAIT_MS);
 		if (s32Ret == CVI_SUCCESS)
 			break;
-		printf("my_cam_test: grp%d GetChnFrame attempt %d failed %#x\n",
+		CAM_LOG("grp%d GetChnFrame attempt %d failed %#x\n",
 		       vpss_grp, attempt, s32Ret);
 	}
 
@@ -192,7 +206,7 @@ CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_se
 
 	s32Ret = save_nv12_frame(&stFrame, path);
 	if (CVI_VPSS_ReleaseChnFrame(vpss_grp, CAM_VPSS_CHN_ID, &stFrame) != CVI_SUCCESS)
-		printf("my_cam_test: grp%d ReleaseChnFrame failed\n", vpss_grp);
+		CAM_LOG("grp%d ReleaseChnFrame failed\n", vpss_grp);
 
 	return s32Ret;
 }
@@ -211,8 +225,7 @@ VPSS_GRP cam_vpss_dual_grp(int cam)
 
 CVI_S32 cam_vpss_init_dual(CVI_U32 depth)
 {
-	PIC_SIZE_E enPicSize;
-	SIZE_S stSize;
+	SIZE_S stSrc, stOut;
 	CVI_S32 s32Ret;
 	int cam;
 
@@ -220,16 +233,13 @@ CVI_S32 cam_vpss_init_dual(CVI_U32 depth)
 		VPSS_GRP vpss_grp = cam_vpss_dual_grp(cam);
 		CVI_U8 vpss_dev = g_cam_dual_media_mode ? 1 : 0;
 
-		s32Ret = SAMPLE_COMM_VI_GetSizeBySensor(
-			g_cam_vi_cfg.astViInfo[cam].stSnsInfo.enSnsType, &enPicSize);
+		s32Ret = cam_sensor_size_by_cam(cam, &stSrc, NULL);
 		if (s32Ret != CVI_SUCCESS)
 			return s32Ret;
 
-		s32Ret = SAMPLE_COMM_SYS_GetPicSize(enPicSize, &stSize);
-		if (s32Ret != CVI_SUCCESS)
-			return s32Ret;
+		cam_output_res_effective(&stSrc, &stOut, NULL);
 
-		s32Ret = cam_vpss_init_grp(vpss_grp, &stSize, depth, vpss_dev);
+		s32Ret = cam_vpss_init_grp(vpss_grp, &stSrc, &stOut, depth, vpss_dev);
 		if (s32Ret != CVI_SUCCESS)
 			return s32Ret;
 
@@ -241,9 +251,9 @@ CVI_S32 cam_vpss_init_dual(CVI_U32 depth)
 			s32Ret = cam_vpss_bind_cam(cam);
 			if (s32Ret != CVI_SUCCESS)
 				return s32Ret;
-			printf("my_cam_test: cam0 grp0 online u8VpssDev=1 + VI bind\n");
+			CAM_LOG("cam0 grp0 online u8VpssDev=1 + VI bind\n");
 		} else {
-			printf("my_cam_test: cam1 grp1 online u8VpssDev=1 (no VI bind)\n");
+			CAM_LOG("cam1 grp1 online u8VpssDev=1 (no VI bind)\n");
 		}
 	}
 
@@ -269,7 +279,7 @@ void cam_vpss_teardown(void)
 		vi_chn = g_cam_vi_cfg.astViInfo[cam].stChnInfo.ViChn;
 		SAMPLE_COMM_VI_UnBind_VPSS(vi_pipe, vi_chn, (VPSS_GRP)cam);
 		SAMPLE_COMM_VPSS_Stop((VPSS_GRP)cam, abChnEnable);
-		printf("my_cam_test: VPSS grp%d deinit done\n", cam);
+		CAM_LOG("VPSS grp%d deinit done\n", cam);
 	}
 
 	g_cam_vpss_grp_mask = 0;

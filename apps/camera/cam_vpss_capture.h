@@ -6,9 +6,11 @@
 
 #include "sample_comm.h"
 
-CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSize, CVI_U32 depth,
-			  CVI_U8 vpss_dev);
-CVI_S32 cam_vpss_init_single(const SIZE_S *pstSize, CVI_U32 depth);
+/* pstOutSize 为 NULL 时与 pstSrcSize 相同（不缩放） */
+CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSrcSize,
+			  const SIZE_S *pstOutSize, CVI_U32 depth, CVI_U8 vpss_dev);
+CVI_S32 cam_vpss_init_single(const SIZE_S *pstSrcSize, const SIZE_S *pstOutSize,
+			     CVI_U32 depth);
 CVI_S32 cam_vpss_bind_cam(int cam_idx);
 CVI_S32 cam_vpss_bind_single(void);
 CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_settle);

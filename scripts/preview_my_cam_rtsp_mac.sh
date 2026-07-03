@@ -73,13 +73,17 @@ board_reboot_and_wait() {
 
 board_rtsp_pid_alive() {
 	ssh $SSH_OPTS "$BOARD_USER@$BOARD_IP" \
-		'[ -f /tmp/my_cam_test_rtsp.pid ] && kill -0 "$(cat /tmp/my_cam_test_rtsp.pid)" 2>/dev/null' \
+		'for f in /tmp/edgeeye_cam_rtsp.pid /tmp/my_cam_test_rtsp.pid; do
+			[ -f "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null && exit 0
+		done
+		exit 1' \
 		2>/dev/null
 }
 
 show_board_log_tail() {
-	echo "--- board /tmp/my_cam_test_rtsp.log (last 30 lines) ---"
-	ssh $SSH_OPTS "$BOARD_USER@$BOARD_IP" 'tail -30 /tmp/my_cam_test_rtsp.log 2>/dev/null || echo "(no log)"' \
+	echo "--- board RTSP log (last 30 lines) ---"
+	ssh $SSH_OPTS "$BOARD_USER@$BOARD_IP" \
+		'tail -30 /tmp/edgeeye_cam_rtsp.log 2>/dev/null || tail -30 /tmp/my_cam_test_rtsp.log 2>/dev/null || echo "(no log)"' \
 		2>/dev/null || true
 }
 

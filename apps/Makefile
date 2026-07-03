@@ -20,7 +20,8 @@ all: $(BUILD_DIR) $(APP_BINS) camera install_stream
 	@cp $(APP_BINS) $(OUT_DIR)/ 2>/dev/null || true
 
 camera:
-	$(MAKE) -C camera
+	$(MAKE) -C $(ROOT_DIR)/apps/camera/bin
+	$(MAKE) -C $(ROOT_DIR)/tests/camera/my_cam_test
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
@@ -43,5 +44,6 @@ install_stream:
 clean:
 	rm -rf $(BUILD_DIR)
 	$(MAKE) -C camera clean 2>/dev/null || true
-	@rm -f $(OUT_DIR)/motion_detect $(OUT_DIR)/motion_detect_v4l2 $(OUT_DIR)/motion_recorder $(OUT_DIR)/sync_probe $(OUT_DIR)/my_cam_test 2>/dev/null || true
+	$(MAKE) -C $(ROOT_DIR)/tests/camera/my_cam_test clean 2>/dev/null || true
+	@rm -f $(OUT_DIR)/motion_detect $(OUT_DIR)/motion_detect_v4l2 $(OUT_DIR)/motion_recorder $(OUT_DIR)/sync_probe $(OUT_DIR)/my_cam_test $(OUT_DIR)/edgeeye_cam 2>/dev/null || true
 	@rm -rf $(OUT_DIR)/stream 2>/dev/null || true

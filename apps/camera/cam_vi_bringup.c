@@ -4,10 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cvi_isp.h"
-#include "cvi_sys.h"
+#include "cam_vi_bringup.h"
 #include "cam_app_context.h"
 #include "cam_isp_tuning.h"
+#include "cam_log.h"
 #include "cam_pipeline_config.h"
 #include "cam_pipeline_mode.h"
 #include "cam_rtsp_stream.h"
@@ -41,7 +41,7 @@ CVI_S32 cam_vi_setup_dual_media_mode(void)
 
 	s32Ret = CVI_SYS_SetVIVPSSMode(&stVIVPSSMode);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: SetVIVPSSMode failed %#x\n", s32Ret);
+		CAM_LOG("SetVIVPSSMode failed %#x\n", s32Ret);
 		return s32Ret;
 	}
 
@@ -53,32 +53,38 @@ CVI_S32 cam_vi_setup_dual_media_mode(void)
 
 	s32Ret = CVI_SYS_SetVPSSModeEx(&stVPSSMode);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: SetVPSSModeEx failed %#x\n", s32Ret);
+		CAM_LOG("SetVPSSModeEx failed %#x\n", s32Ret);
 		return s32Ret;
 	}
 
 	g_cam_dual_media_mode = CVI_TRUE;
-	printf("my_cam_test: dual VI-VPSS online (VPSS_INPUT_MEM+ISP, ViPipe[1]=0)\n");
+	CAM_LOG("dual VI-VPSS online (VPSS_INPUT_MEM+ISP, ViPipe[1]=0)\n");
 	return CVI_SUCCESS;
+}
+
+static CVI_U32 vb_cnt_for_level(cam_vb_level_e level, CVI_BOOL dual_vpss)
+{
+	switch (level) {
+	case CAM_VB_LEVEL_VENC:
+		return dual_vpss ? 10 : 8;
+	case CAM_VB_LEVEL_VPSS:
+		return 8;
+	case CAM_VB_LEVEL_ISP:
+	default:
+		return 3;
+	}
 }
 
 static CVI_S32 setup_vb_pool(const SAMPLE_INI_CFG_S *pstIniCfg,
 			     SAMPLE_VI_CONFIG_S *pstViConfig,
-			     VB_CONFIG_S *pstVbConf)
+			     VB_CONFIG_S *pstVbConf,
+			     const cam_vi_bringup_opts *opts)
 {
 	PIC_SIZE_E enPicSize;
 	SIZE_S stSize;
 	CVI_U32 u32BlkSize, u32BlkRotSize;
-	CVI_U32 vb_cnt = 3;
-	CVI_BOOL dual_vpss = cam_is_dual() && cam_phase_needs_vpss(g_cam_phase);
-
-	if (cam_is_dual() && cam_phase_needs_vpss(g_cam_phase)) {
-		vb_cnt = (g_cam_phase >= 4) ? 10 : 8;
-	} else if (g_cam_phase >= 4 && g_cam_phase <= 5) {
-		vb_cnt = 8;
-	} else if (g_cam_phase == 3 || dual_vpss) {
-		vb_cnt = 8;
-	}
+	CVI_BOOL dual_vpss = cam_is_dual() && opts->enable_dual_vpss;
+	CVI_U32 vb_cnt = vb_cnt_for_level(opts->vb_level, dual_vpss);
 
 	memset(pstVbConf, 0, sizeof(*pstVbConf));
 
@@ -88,13 +94,13 @@ static CVI_S32 setup_vb_pool(const SAMPLE_INI_CFG_S *pstIniCfg,
 
 		s32Ret = SAMPLE_COMM_VI_GetSizeBySensor(pstIniCfg->enSnsType[i], &enPicSize);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: GetSizeBySensor failed %#x\n", s32Ret);
+			CAM_LOG("GetSizeBySensor failed %#x\n", s32Ret);
 			return s32Ret;
 		}
 
 		s32Ret = SAMPLE_COMM_SYS_GetPicSize(enPicSize, &stSize);
 		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: GetPicSize failed %#x\n", s32Ret);
+			CAM_LOG("GetPicSize failed %#x\n", s32Ret);
 			return s32Ret;
 		}
 
@@ -161,14 +167,21 @@ static void log_set_verbose(void)
 	CVI_LOG_SetLevelConf(&log_conf);
 }
 
-CVI_S32 cam_vi_bringup_init(void)
+CVI_S32 cam_vi_bringup_init(const cam_vi_bringup_opts *opts)
 {
 	MMF_VERSION_S stVersion;
 	SAMPLE_INI_CFG_S stIniCfg;
 	SAMPLE_VI_CONFIG_S stViConfig;
 	VB_CONFIG_S stVbConf;
 	LOG_LEVEL_CONF_S log_conf;
+	cam_vi_bringup_opts local_opts;
 	CVI_S32 s32Ret;
+
+	if (!opts) {
+		local_opts.enable_dual_vpss = CVI_FALSE;
+		local_opts.vb_level = CAM_VB_LEVEL_ISP;
+		opts = &local_opts;
+	}
 
 	CVI_SYS_GetVersion(&stVersion);
 	printf("MMF Version: %s\n", stVersion.version);
@@ -181,7 +194,7 @@ CVI_S32 cam_vi_bringup_init(void)
 
 	s32Ret = SAMPLE_COMM_VI_ParseIni(&stIniCfg);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: ParseIni failed (check /mnt/data/sensor_cfg.ini)\n");
+		CAM_LOG("ParseIni failed (check /mnt/data/sensor_cfg.ini)\n");
 		return s32Ret;
 	}
 
@@ -195,22 +208,22 @@ CVI_S32 cam_vi_bringup_init(void)
 	if (s32Ret != CVI_SUCCESS)
 		return s32Ret;
 
-	if (cam_is_dual() && cam_phase_needs_vpss(g_cam_phase))
+	if (cam_is_dual() && opts->enable_dual_vpss)
 		cam_vi_prepare_dual_online_config(&stViConfig);
 
 	memcpy(&g_cam_vi_cfg, &stViConfig, sizeof(g_cam_vi_cfg));
 
-	s32Ret = setup_vb_pool(&stIniCfg, &stViConfig, &stVbConf);
+	s32Ret = setup_vb_pool(&stIniCfg, &stViConfig, &stVbConf, opts);
 	if (s32Ret != CVI_SUCCESS)
 		return s32Ret;
 
 	s32Ret = SAMPLE_COMM_SYS_Init(&stVbConf);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: SYS_Init failed %#x\n", s32Ret);
+		CAM_LOG("SYS_Init failed %#x\n", s32Ret);
 		return s32Ret;
 	}
 
-	if (cam_is_dual() && cam_phase_needs_vpss(g_cam_phase)) {
+	if (cam_is_dual() && opts->enable_dual_vpss) {
 		s32Ret = cam_vi_setup_dual_media_mode();
 		if (s32Ret != CVI_SUCCESS) {
 			SAMPLE_COMM_SYS_Exit();
@@ -223,7 +236,7 @@ CVI_S32 cam_vi_bringup_init(void)
 	else
 		s32Ret = SAMPLE_PLAT_VI_INIT(&stViConfig);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: VI_Init failed %#x\n", s32Ret);
+		CAM_LOG("VI_Init failed %#x\n", s32Ret);
 		SAMPLE_COMM_SYS_Exit();
 		return s32Ret;
 	}
@@ -234,12 +247,12 @@ CVI_S32 cam_vi_bringup_init(void)
 			VI_PIPE pipe = stViConfig.astViInfo[i].stPipeInfo.aPipe[0];
 
 			CVI_ISP_GetPubAttr(pipe, &stPubAttr);
-			printf("my_cam_test: pipe%d ISP FPS %.2f\n", pipe, stPubAttr.f32FrameRate);
+			CAM_LOG("pipe%d ISP FPS %.2f\n", pipe, stPubAttr.f32FrameRate);
 		}
 	}
 
-	printf("my_cam_test: VI/ISP init OK (%s, %d sensor(s))\n",
-	       cam_is_dual() ? "dual" : "single", cam_sensor_count());
+	CAM_LOG("VI/ISP init OK (%s, %d sensor(s))\n",
+		cam_is_dual() ? "dual" : "single", cam_sensor_count());
 	return CVI_SUCCESS;
 }
 
@@ -254,5 +267,5 @@ void cam_vi_bringup_deinit(void)
 	SAMPLE_COMM_VI_DestroyIsp(&g_cam_vi_cfg);
 	SAMPLE_COMM_VI_DestroyVi(&g_cam_vi_cfg);
 	SAMPLE_COMM_SYS_Exit();
-	printf("my_cam_test: VI/ISP deinit done\n");
+	CAM_LOG("VI/ISP deinit done\n");
 }

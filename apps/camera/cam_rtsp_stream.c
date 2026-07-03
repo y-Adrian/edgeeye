@@ -9,6 +9,7 @@
 
 #include "cvi_venc.h"
 #include "cam_app_context.h"
+#include "cam_log.h"
 #include "cam_pipeline_config.h"
 #include "cam_pipeline_mode.h"
 #include "cam_rtsp_stream.h"
@@ -31,11 +32,11 @@ static CVI_S32 rtsp_create_session(VENC_CHN venc_chn, const char *url,
 	strncpy(attr.name, url, sizeof(attr.name) - 1);
 
 	if (CVI_RTSP_CreateSession(g_cam_rtsp_ctx, &attr, out_sess) != 0) {
-		printf("my_cam_test: CVI_RTSP_CreateSession(%s) failed\n", url);
+		CAM_LOG("CVI_RTSP_CreateSession(%s) failed\n", url);
 		return CVI_FAILURE;
 	}
 
-	printf("my_cam_test: RTSP session chn%d -> rtsp://<board>:%d/%s\n",
+	CAM_LOG("RTSP session chn%d -> rtsp://<board>:%d/%s\n",
 	       venc_chn, g_cam_rtsp_port, url);
 	return CVI_SUCCESS;
 }
@@ -52,7 +53,7 @@ CVI_S32 cam_rtsp_start_server(void)
 	config.maxConnNum = 8;
 
 	if (CVI_RTSP_Create(&g_cam_rtsp_ctx, &config) != 0) {
-		printf("my_cam_test: CVI_RTSP_Create failed\n");
+		CAM_LOG("CVI_RTSP_Create failed\n");
 		return CVI_FAILURE;
 	}
 
@@ -68,7 +69,7 @@ CVI_S32 cam_rtsp_start_server(void)
 	}
 
 	if (CVI_RTSP_Start(g_cam_rtsp_ctx) != 0) {
-		printf("my_cam_test: CVI_RTSP_Start failed\n");
+		CAM_LOG("CVI_RTSP_Start failed\n");
 		cam_rtsp_teardown();
 		return CVI_FAILURE;
 	}
@@ -121,7 +122,7 @@ static CVI_S32 rtsp_push_venc_chn(VENC_CHN venc_chn, int *frames_out)
 	if (g_cam_rtsp_sessions[venc_chn] &&
 	    CVI_RTSP_WriteFrame(g_cam_rtsp_ctx, g_cam_rtsp_sessions[venc_chn]->video,
 				&rtsp_data) != 0)
-		printf("my_cam_test: RTSP_WriteFrame chn%d failed\n", venc_chn);
+		CAM_LOG("RTSP_WriteFrame chn%d failed\n", venc_chn);
 
 	CVI_VENC_ReleaseStream(venc_chn, &stStream);
 	free(stStream.pstPack);
@@ -130,20 +131,29 @@ static CVI_S32 rtsp_push_venc_chn(VENC_CHN venc_chn, int *frames_out)
 	return CVI_SUCCESS;
 }
 
-CVI_S32 cam_rtsp_stream_venc(int stream_sec)
+CVI_S32 cam_rtsp_stream_venc(int stream_sec, cam_rtsp_stream_stats *stats)
 {
-	time_t end_at;
+	time_t end_at = 0;
 	int frames[CAM_MAX_SENSORS] = {0};
 	int cam, total_frames = 0;
+
+	if (stats)
+		memset(stats, 0, sizeof(*stats));
 
 	if (cam_pipeline_wait_isp_settle() != CVI_SUCCESS)
 		return CVI_FAILURE;
 
-	end_at = time(NULL) + stream_sec;
-	printf("my_cam_test: RTSP streaming %d s (%s)\n", stream_sec,
-	       cam_is_dual() ? "dual cam0+cam1" : "single");
+	if (stream_sec > 0) {
+		end_at = time(NULL) + stream_sec;
+		CAM_LOG("RTSP streaming %d s (%s)\n", stream_sec,
+			cam_is_dual() ? "dual cam0+cam1" : "single");
+	} else {
+		end_at = 0;
+		CAM_LOG("RTSP streaming until stop (%s)\n",
+			cam_is_dual() ? "dual cam0+cam1" : "single");
+	}
 
-	while (!g_cam_stop && time(NULL) < end_at) {
+	while (!g_cam_stop && (stream_sec <= 0 || time(NULL) < end_at)) {
 		for (cam = 0; cam < cam_sensor_count(); cam++) {
 			if (!(g_cam_venc_mask & (1 << cam)))
 				continue;
@@ -155,12 +165,13 @@ CVI_S32 cam_rtsp_stream_venc(int stream_sec)
 	for (cam = 0; cam < cam_sensor_count(); cam++)
 		total_frames += frames[cam];
 
-	if (total_frames < CAM_RTSP_MIN_FRAMES) {
-		printf("my_cam_test: RTSP too few frames (%d)\n", total_frames);
-		return CVI_FAILURE;
+	if (stats) {
+		stats->total_frames = total_frames;
+		stats->frames[0] = frames[0];
+		stats->frames[1] = frames[1];
 	}
 
-	printf("my_cam_test: RTSP streamed %d frames", total_frames);
+	CAM_LOG("RTSP streamed %d frames", total_frames);
 	if (cam_is_dual())
 		printf(" (cam0=%d cam1=%d)", frames[0], frames[1]);
 	printf("\n");
@@ -185,5 +196,5 @@ void cam_rtsp_teardown(void)
 	g_cam_rtsp_ctx = NULL;
 	g_cam_rtsp_session_mask = 0;
 	g_cam_rtsp_up = CVI_FALSE;
-	printf("my_cam_test: RTSP deinit done\n");
+	CAM_LOG("RTSP deinit done\n");
 }
