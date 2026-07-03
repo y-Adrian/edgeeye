@@ -1,6 +1,22 @@
 # camera — 自研推流学习程序
 
-按阶段从 VI 到 RTSP 逐步实现。当前：**阶段 5**（RTSP 实时预览）。
+按阶段从 VI 到 RTSP 逐步实现。当前：**阶段 8**（双摄 H.264 抓流）。
+
+## 源码模块（`apps/camera/`）
+
+| 文件 | 职责 |
+|------|------|
+| `my_cam_test.c` | 入口：参数解析、信号、phase 调度 |
+| `cam_pipeline_config.h` | 常量、默认路径、phase 输出文件名 |
+| `cam_app_context.c/h` | 运行时全局状态 |
+| `cam_vi_bringup.c/h` | VI/SYS/VB 初始化与回收 |
+| `cam_isp_tuning.c/h` | 双摄 per-pipe PQ、`dual_plat_vi_init` |
+| `cam_vpss_capture.c/h` | VPSS 组、VI 绑定、NV12 抓帧 |
+| `cam_venc_encode.c/h` | H.264 VENC 与码流写盘 |
+| `cam_rtsp_stream.c/h` | RTSP 服务与推流 |
+| `cam_test_phases.c/h` | phase 3～8 编排 |
+
+可执行文件名仍为 **`my_cam_test`**（部署脚本不变）。
 
 ## 阶段 2：`my_cam_test -p 2`
 

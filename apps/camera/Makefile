@@ -20,9 +20,17 @@ COMMON_SRCS := sample_common_sys.c sample_common_platform.c sample_common_vi.c \
                sample_common_isp.c sample_common_bin.c sample_common_sensor.c \
                sample_common_vpss.c sample_common_venc.c
 
-SRCS     := my_cam_test.c $(COMMON_SRCS)
-OBJS     := $(CAM_BUILD)/my_cam_test.o \
-            $(addprefix $(CAM_BUILD)/,$(COMMON_SRCS:.c=.o))
+CAM_SRCS := my_cam_test.c \
+            cam_app_context.c \
+            cam_isp_tuning.c \
+            cam_vi_bringup.c \
+            cam_vpss_capture.c \
+            cam_venc_encode.c \
+            cam_rtsp_stream.c \
+            cam_test_phases.c
+
+SRCS     := $(CAM_SRCS) $(COMMON_SRCS)
+OBJS     := $(addprefix $(CAM_BUILD)/,$(CAM_SRCS:.c=.o) $(COMMON_SRCS:.c=.o))
 
 TARGET   := my_cam_test
 OUT_BIN  := $(OUT_DIR)/$(TARGET)
@@ -68,7 +76,7 @@ $(OUT_BIN): $(OBJS) $(MW_LIB)/libsys.a | $(CAM_BUILD)
 $(CAM_BUILD):
 	@mkdir -p $(CAM_BUILD)
 
-$(CAM_BUILD)/my_cam_test.o: my_cam_test.c | $(CAM_BUILD)
+$(CAM_BUILD)/%.o: %.c | $(CAM_BUILD)
 	$(CC) $(CFLAGS) -o $@ -c $<
 	@echo "  cc: $@"
 
