@@ -26,8 +26,28 @@ LOG=/tmp/my_cam_test_p6.log
 cat "$LOG"
 
 grep -q 'dev_num=2' "$LOG" || { echo "FAIL: dev_num not 2"; exit 1; }
-grep -qi 'GC2083.*Init OK' "$LOG" || { echo "FAIL: no GC2083 Init OK"; exit 1; }
-grep -qi 'OV5647.*Init OK' "$LOG" || { echo "FAIL: no OV5647 Init OK"; exit 1; }
+# 板上多为 BusyBox grep：须 -E 才支持 .* ；或拆成关键字 + Init OK 计数
+if grep -Eq 'GC2083.*Init OK' "$LOG" 2>/dev/null; then
+	:
+elif grep -q 'GC2083' "$LOG" && grep -q 'Init OK' "$LOG"; then
+	:
+else
+	echo "FAIL: no GC2083 Init OK"
+	exit 1
+fi
+if grep -Eq 'OV5647.*Init OK' "$LOG" 2>/dev/null; then
+	:
+elif grep -q 'OV5647' "$LOG" && grep -q 'Init OK' "$LOG"; then
+	:
+else
+	echo "FAIL: no OV5647 Init OK"
+	exit 1
+fi
+INIT_CNT=$(grep -c 'Init OK' "$LOG" 2>/dev/null || echo 0)
+if [ "$INIT_CNT" -lt 2 ]; then
+	echo "FAIL: expected >=2 Init OK lines, got $INIT_CNT"
+	exit 1
+fi
 grep -q 'PQ loaded pipe0' "$LOG" || { echo "FAIL: no PQ pipe0"; exit 1; }
 grep -q 'PQ loaded pipe1' "$LOG" || { echo "FAIL: no PQ pipe1"; exit 1; }
 grep -q 'dual VI/ISP OK' "$LOG" || { echo "FAIL: no dual VI OK line"; exit 1; }

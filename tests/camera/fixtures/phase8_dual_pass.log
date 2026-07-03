@@ -1,0 +1,14 @@
+=== EdgeEye my_cam_test (phase 8) ===
+sensor_cfg.ini: dev_num=2
+my_cam_test: PQ loaded pipe0 <- /mnt/cfg/param/cvi_sdr_bin_GC2083
+my_cam_test: PQ loaded pipe1 <- /mnt/cfg/param/cvi_sdr_bin_OV5647.bin
+my_cam_test: dual ISP OK (per-pipe PQ, ISP_Run pipe0)
+my_cam_test: VENC chn0 H264 ready (grp0 pic_size=8)
+my_cam_test: VENC chn1 H264 ready (grp1 pic_size=8)
+my_cam_test: waiting 2 s for VENC IDR...
+my_cam_test: chn0 start save from IDR/I slice
+my_cam_test: saved H264 chn0 -> /tmp/cam0.h264 (65504 bytes, 10 streams)
+my_cam_test: chn1 start save from IDR/I slice
+my_cam_test: saved H264 chn1 -> /tmp/cam1.h264 (64524 bytes, 10 streams)
+my_cam_test: dual VENC capture OK
+my_cam_test: PASSED (phase 8)

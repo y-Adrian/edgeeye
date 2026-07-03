@@ -1,7 +1,5 @@
 /*
- * my_cam_test.c — EdgeEye 摄像头渐进验收程序入口（phase 2～8）
- *
- * 模块划分见同目录 cam_*.c / cam_*.h。
+ * my_cam_test.c — EdgeEye 摄像头渐进验收（单摄/双摄由 sensor_cfg.ini dev_num 决定）
  */
 #include <signal.h>
 #include <stdio.h>
@@ -11,6 +9,7 @@
 
 #include "cam_app_context.h"
 #include "cam_pipeline_config.h"
+#include "cam_pipeline_mode.h"
 #include "cam_test_phases.h"
 #include "cam_vi_bringup.h"
 
@@ -24,21 +23,39 @@ static void usage(const char *prog)
 {
 	printf("Usage: %s [-p PHASE] [-s SECONDS] [-o PATH] [-P PORT] [-u URL] [-v]\n",
 	       prog);
-	printf("  Phase 2: init VI/ISP, hold, exit (default)\n");
-	printf("  Phase 3: VI -> VPSS, capture one NV12 frame\n");
-	printf("  Phase 4: VI -> VPSS -> VENC, write H.264 elementary stream\n");
-	printf("  Phase 5: VI -> VPSS -> VENC -> RTSP live preview\n");
-	printf("  Phase 6: dual VI/ISP init (requires dev_num=2 ini)\n");
-	printf("  Phase 7: dual VI -> VPSS, capture NV12 per camera\n");
-	printf("  Phase 8: dual VI -> VPSS -> VENC, write H.264 per camera\n");
+	printf("  sensor_cfg.ini dev_num=1 -> single cam; dev_num=2 -> dual cam\n");
+	printf("  Phase 2: init VI/ISP, hold (single or dual)\n");
+	printf("  Phase 3: VI -> VPSS, capture NV12 (1 or 2 files)\n");
+	printf("  Phase 4: VI -> VPSS -> VENC, write H.264 (1 or 2 files)\n");
+	printf("  Phase 5: VI -> VPSS -> VENC -> RTSP (cam0; dual adds cam1)\n");
+	printf("  Phase 6: alias of phase 2 hold (dual ini only, for scripts)\n");
+	printf("  Phase 7: alias of phase 3 (dual scripts)\n");
+	printf("  Phase 8: alias of phase 4 (dual scripts)\n");
 	printf("  -p  2, 3, 4, 5, 6, 7, or 8 (default %d)\n", CAM_DEFAULT_PHASE);
-	printf("  -o  phase 3 default %s; phase 4 default %s\n",
+	printf("  -o  single-cam phase 3/4 output (default %s / %s)\n",
 	       CAM_DEFAULT_YUV_PATH, CAM_DEFAULT_H264_PATH);
 	printf("  -s  phase 2/6 hold seconds (default %d); phase 5 stream seconds (default %d)\n",
 	       CAM_DEFAULT_HOLD_SEC, CAM_DEFAULT_STREAM_SEC);
 	printf("  -P  RTSP port for phase 5 (default %d)\n", CAM_DEFAULT_RTSP_PORT);
-	printf("  -u  RTSP URL path for phase 5 (default %s)\n", CAM_DEFAULT_RTSP_URL);
+	printf("  -u  RTSP URL path for single-cam phase 5 (default %s)\n",
+	       CAM_DEFAULT_RTSP_URL);
 	printf("  -v  VI/ISP/VPSS/VENC/VB debug logs\n");
+}
+
+static CVI_S32 run_isp_hold(int hold_sec, int phase_label)
+{
+	printf("holding %d s (ISP running, %s)...\n", hold_sec,
+	       cam_is_dual() ? "dual" : "single");
+	for (int i = 0; i < hold_sec && !g_cam_stop; i++)
+		sleep(1);
+	if (g_cam_stop)
+		return CVI_FAILURE;
+
+	printf("my_cam_test: PASSED (phase %d)\n", phase_label);
+	fflush(stdout);
+	if (cam_should_fast_exit(phase_label))
+		_exit(0);
+	return CVI_SUCCESS;
 }
 
 int main(int argc, char **argv)
@@ -100,9 +117,9 @@ int main(int argc, char **argv)
 	signal(SIGTERM, handle_signal);
 
 	if (!g_cam_out_path_set) {
-		if (g_cam_phase == 4)
+		if (g_cam_phase == 4 || g_cam_phase == 8)
 			strncpy(g_cam_out_path, CAM_DEFAULT_H264_PATH, sizeof(g_cam_out_path) - 1);
-		else if (g_cam_phase == 3)
+		else if (g_cam_phase == 3 || g_cam_phase == 7)
 			strncpy(g_cam_out_path, CAM_DEFAULT_YUV_PATH, sizeof(g_cam_out_path) - 1);
 		g_cam_out_path[sizeof(g_cam_out_path) - 1] = '\0';
 	}
@@ -115,58 +132,42 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (g_cam_phase == 3) {
-		s32Ret = cam_test_phase3_run();
-		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: FAILED phase 3 %#x\n", s32Ret);
-			cam_vi_bringup_deinit();
-			return 1;
-		}
-	} else if (g_cam_phase == 4) {
-		s32Ret = cam_test_phase4_run();
-		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: FAILED phase 4 %#x\n", s32Ret);
-			cam_vi_bringup_deinit();
-			return 1;
-		}
-	} else if (g_cam_phase == 5) {
-		s32Ret = cam_test_phase5_run(stream_sec);
-		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: FAILED phase 5 %#x\n", s32Ret);
-			cam_vi_bringup_deinit();
-			return 1;
-		}
-	} else if (g_cam_phase == 6) {
+	switch (g_cam_phase) {
+	case 2:
+		s32Ret = run_isp_hold(hold_sec, 2);
+		break;
+	case 3:
+	case 7:
+		s32Ret = cam_test_capture_yuv_run();
+		break;
+	case 4:
+	case 8:
+		s32Ret = cam_test_capture_h264_run();
+		break;
+	case 5:
+		s32Ret = cam_test_rtsp_run(stream_sec);
+		break;
+	case 6:
 		s32Ret = cam_test_phase6_validate();
-		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: FAILED phase 6 %#x\n", s32Ret);
-			cam_vi_bringup_deinit();
-			return 1;
-		}
-		printf("holding %d s (dual ISP running)...\n", hold_sec);
-		for (int i = 0; i < hold_sec && !g_cam_stop; i++)
-			sleep(1);
-	} else if (g_cam_phase == 7) {
-		s32Ret = cam_test_phase7_run();
-		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: FAILED phase 7 %#x\n", s32Ret);
-			cam_vi_bringup_deinit();
-			return 1;
-		}
-	} else if (g_cam_phase == 8) {
-		s32Ret = cam_test_phase8_run();
-		if (s32Ret != CVI_SUCCESS) {
-			printf("my_cam_test: FAILED phase 8 %#x\n", s32Ret);
-			cam_vi_bringup_deinit();
-			return 1;
-		}
+		if (s32Ret == CVI_SUCCESS)
+			s32Ret = run_isp_hold(hold_sec, 6);
+		break;
+	default:
+		printf("my_cam_test: invalid phase %d\n", g_cam_phase);
+		s32Ret = CVI_FAILURE;
+		break;
+	}
+
+	if (s32Ret != CVI_SUCCESS) {
+		printf("my_cam_test: FAILED phase %d %#x\n", g_cam_phase, s32Ret);
+		cam_vi_bringup_deinit();
+		return 1;
+	}
+
+	if (g_cam_phase == 8 && cam_is_dual()) {
 		printf("my_cam_test: PASSED (phase 8)\n");
 		fflush(stdout);
 		_exit(0);
-	} else {
-		printf("holding %d s (ISP running)...\n", hold_sec);
-		for (int i = 0; i < hold_sec && !g_cam_stop; i++)
-			sleep(1);
 	}
 
 	cam_vi_bringup_deinit();

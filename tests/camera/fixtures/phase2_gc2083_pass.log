@@ -1,0 +1,8 @@
+=== EdgeEye my_cam_test (phase 2) ===
+MMF Version: 1.4.0
+sensor_cfg.ini: dev_num=1
+GCORE_GC2083_MIPI_2M_30FPS_10BIT Init OK
+my_cam_test: VI/ISP init OK (look for sensor Init OK above)
+holding 10 s (ISP running)...
+my_cam_test: VI/ISP deinit done
+my_cam_test: PASSED (phase 2)

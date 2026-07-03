@@ -18,6 +18,25 @@
 
 可执行文件名仍为 **`my_cam_test`**（部署脚本不变）。
 
+## 测试
+
+**本地（无需板子）：**
+
+```bash
+cd edgeeye-duos
+make test
+```
+
+覆盖：验收脚本语法、`my_cam_test_common.sh` 解析、sensor ini、源码模块布局、deploy 清单、fixture 日志 grep。详见 [`tests/camera/TESTCASES.md`](../../tests/camera/TESTCASES.md)。
+
+**板上：**
+
+```bash
+make app && ./deploy
+ssh root@192.168.42.1 '/root/test_my_cam_test_phase.sh 7'
+# Mac 批量：tests/camera/run_board_tests.sh
+```
+
 ## 阶段 2：`my_cam_test -p 2`
 
 仅初始化 VI + ISP，不推流。等价于精简版 `sample_sensor_test`。

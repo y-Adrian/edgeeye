@@ -1,5 +1,5 @@
 /*
- * cam_vi_bringup.c — VI/SYS 初始化、VB 池与双摄在线模式
+ * cam_vi_bringup.c — VI/SYS 初始化（按 dev_num 自动单摄/双摄）
  */
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +9,7 @@
 #include "cam_app_context.h"
 #include "cam_isp_tuning.h"
 #include "cam_pipeline_config.h"
+#include "cam_pipeline_mode.h"
 #include "cam_rtsp_stream.h"
 #include "cam_venc_encode.h"
 #include "cam_vpss_capture.h"
@@ -69,10 +70,11 @@ static CVI_S32 setup_vb_pool(const SAMPLE_INI_CFG_S *pstIniCfg,
 	SIZE_S stSize;
 	CVI_U32 u32BlkSize, u32BlkRotSize;
 	CVI_U32 vb_cnt = 3;
+	CVI_BOOL dual_vpss = cam_is_dual() && cam_phase_needs_vpss(g_cam_phase);
 
 	if (g_cam_phase >= 4 && g_cam_phase <= 5)
 		vb_cnt = 8;
-	else if (g_cam_phase == 3 || g_cam_phase == 7 || g_cam_phase == 8)
+	else if (g_cam_phase == 3 || dual_vpss)
 		vb_cnt = 8;
 
 	memset(pstVbConf, 0, sizeof(*pstVbConf));
@@ -106,7 +108,7 @@ static CVI_S32 setup_vb_pool(const SAMPLE_INI_CFG_S *pstIniCfg,
 
 		for (CVI_U32 j = 0; j < pstVbConf->u32MaxPoolCnt; j++) {
 			if (pstVbConf->astCommPool[j].u32BlkSize == u32BlkSize) {
-				if (!(g_cam_phase >= 7 && g_cam_phase <= 8 && pstIniCfg->devNum >= 2)) {
+				if (!dual_vpss) {
 					pstVbConf->astCommPool[j].u32BlkCnt += vb_cnt;
 					create_new = CVI_FALSE;
 				}
@@ -179,7 +181,10 @@ CVI_S32 cam_vi_bringup_init(void)
 		printf("my_cam_test: ParseIni failed (check /mnt/data/sensor_cfg.ini)\n");
 		return s32Ret;
 	}
-	printf("sensor_cfg.ini: dev_num=%u\n", stIniCfg.devNum);
+
+	g_cam_dev_num = stIniCfg.devNum;
+	printf("sensor_cfg.ini: dev_num=%u (%s)\n", g_cam_dev_num,
+	       cam_is_dual() ? "dual" : "single");
 
 	CVI_VI_SetDevNum(stIniCfg.devNum);
 
@@ -187,7 +192,7 @@ CVI_S32 cam_vi_bringup_init(void)
 	if (s32Ret != CVI_SUCCESS)
 		return s32Ret;
 
-	if (stIniCfg.devNum >= 2 && g_cam_phase >= 7)
+	if (cam_is_dual() && cam_phase_needs_vpss(g_cam_phase))
 		cam_vi_prepare_dual_online_config(&stViConfig);
 
 	memcpy(&g_cam_vi_cfg, &stViConfig, sizeof(g_cam_vi_cfg));
@@ -202,7 +207,7 @@ CVI_S32 cam_vi_bringup_init(void)
 		return s32Ret;
 	}
 
-	if (stIniCfg.devNum >= 2 && g_cam_phase >= 7) {
+	if (cam_is_dual() && cam_phase_needs_vpss(g_cam_phase)) {
 		s32Ret = cam_vi_setup_dual_media_mode();
 		if (s32Ret != CVI_SUCCESS) {
 			SAMPLE_COMM_SYS_Exit();
@@ -210,7 +215,7 @@ CVI_S32 cam_vi_bringup_init(void)
 		}
 	}
 
-	if (stIniCfg.devNum >= 2 && g_cam_phase >= 6)
+	if (cam_is_dual())
 		s32Ret = cam_isp_dual_plat_vi_init(&stViConfig);
 	else
 		s32Ret = SAMPLE_PLAT_VI_INIT(&stViConfig);
@@ -220,7 +225,7 @@ CVI_S32 cam_vi_bringup_init(void)
 		return s32Ret;
 	}
 
-	if (stIniCfg.devNum >= 2 && g_cam_phase >= 7) {
+	if (cam_is_dual()) {
 		for (CVI_S32 i = 0; i < stViConfig.s32WorkingViNum; i++) {
 			ISP_PUB_ATTR_S stPubAttr = {0};
 			VI_PIPE pipe = stViConfig.astViInfo[i].stPipeInfo.aPipe[0];
@@ -230,7 +235,8 @@ CVI_S32 cam_vi_bringup_init(void)
 		}
 	}
 
-	printf("my_cam_test: VI/ISP init OK (look for sensor Init OK above)\n");
+	printf("my_cam_test: VI/ISP init OK (%s, %d sensor(s))\n",
+	       cam_is_dual() ? "dual" : "single", cam_sensor_count());
 	return CVI_SUCCESS;
 }
 

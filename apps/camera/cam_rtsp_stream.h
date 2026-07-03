@@ -1,5 +1,5 @@
 /*
- * cam_rtsp_stream.h — RTSP 服务与 VENC 码流推送
+ * cam_rtsp_stream.h — RTSP 服务与 VENC 码流推送（单摄/双摄）
  */
 #ifndef CAM_RTSP_STREAM_H
 #define CAM_RTSP_STREAM_H

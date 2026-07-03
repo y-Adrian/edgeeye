@@ -1,0 +1,12 @@
+=== EdgeEye my_cam_test (phase 6) ===
+MMF Version: 1.4.0
+sensor_cfg.ini: dev_num=2
+ViPipe:0,===GC2083 1080P 30fps 10bit LINE Init OK!===
+ViPipe:1,===OV5647 1080P 30fps 10bit LINE Init OK!
+my_cam_test: PQ loaded pipe0 <- /mnt/cfg/param/cvi_sdr_bin_GC2083
+my_cam_test: PQ loaded pipe1 <- /mnt/cfg/param/cvi_sdr_bin_OV5647.bin
+my_cam_test: dual ISP OK (per-pipe PQ, ISP_Run pipe0)
+my_cam_test: VI/ISP init OK (look for sensor Init OK above)
+my_cam_test: dual VI/ISP OK (2 sensors active)
+holding 10 s (dual ISP running)...
+my_cam_test: PASSED (phase 6)

@@ -1,0 +1,18 @@
+=== EdgeEye my_cam_test (phase 7) ===
+sensor_cfg.ini: dev_num=2
+my_cam_test: dual VI-VPSS online (VPSS_INPUT_MEM+ISP, ViPipe[1]=0)
+my_cam_test: PQ loaded pipe0 <- /mnt/cfg/param/cvi_sdr_bin_GC2083
+my_cam_test: PQ loaded pipe1 <- /mnt/cfg/param/cvi_sdr_bin_OV5647.bin
+my_cam_test: dual ISP OK (per-pipe PQ, ISP_Run pipe0)
+my_cam_test: VPSS grp0 1920x1080 ready
+my_cam_test: cam0 grp0 online u8VpssDev=1 + VI bind
+my_cam_test: VPSS grp1 1920x1080 ready
+my_cam_test: cam1 grp1 online u8VpssDev=1 (no VI bind)
+my_cam_test: waiting 10 s for dual AE/AWB...
+my_cam_test: frame Y mean(sampled)=142 (0=black 128=gray 255=white)
+my_cam_test: saved 1920x1080 NV12 -> /tmp/cam0.yuv (3110400 bytes payload)
+my_cam_test: frame Y mean(sampled)=138 (0=black 128=gray 255=white)
+my_cam_test: saved 1920x1080 NV12 -> /tmp/cam1.yuv (3110400 bytes payload)
+my_cam_test: dual VPSS capture OK
+my_cam_test: VI/ISP deinit done
+my_cam_test: PASSED (phase 7)

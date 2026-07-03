@@ -98,3 +98,67 @@ my_cam_link_sensor() {
 	fi
 	echo "cvi_sdr_bin -> $(readlink /mnt/cfg/param/cvi_sdr_bin)"
 }
+
+# 从 deploy 的 /root/stream/ 同步 sensor ini 到 /mnt/data（缺失时）
+my_cam_install_sensor_configs() {
+	mkdir -p /mnt/data
+	for ini in \
+		sensor_cfg_GC2083.ini \
+		sensor_cfg_OV5647_J2.ini \
+		sensor_cfg_GC2083_OV5647_dual.ini \
+		sensor_cfg_OV5647_dual.ini
+	do
+		if [ ! -f "/mnt/data/$ini" ] && [ -f "/root/stream/$ini" ]; then
+			cp "/root/stream/$ini" "/mnt/data/$ini"
+			echo "installed /mnt/data/$ini <- /root/stream/$ini"
+		fi
+	done
+}
+
+my_cam_assert_bin() {
+	BIN="${MY_CAM_TEST:-/root/my_cam_test}"
+	if [ ! -x "$BIN" ]; then
+		echo "missing $BIN — run: cd edgeeye-duos && make app && ./deploy"
+		return 1
+	fi
+	return 0
+}
+
+# 清理 /tmp 抓帧产物，避免 tmpfs 满
+my_cam_tmp_cleanup() {
+	rm -f /tmp/*.yuv /tmp/*.h264 /tmp/my_cam_test_p*.log /tmp/my_cam_test.log 2>/dev/null || true
+}
+
+my_cam_assert_log() {
+	pat="$1"
+	log="$2"
+	msg="${3:-$pat}"
+	if grep -q "$pat" "$log" 2>/dev/null; then
+		return 0
+	fi
+	echo "FAIL: log missing '$msg'"
+	return 1
+}
+
+my_cam_assert_file_min() {
+	path="$1"
+	min="$2"
+	if [ ! -f "$path" ]; then
+		echo "FAIL: missing $path"
+		return 1
+	fi
+	bytes=$(wc -c <"$path")
+	if [ "$bytes" -lt "$min" ]; then
+		echo "FAIL: $path too small ($bytes < $min)"
+		return 1
+	fi
+	echo "OK: $path size=$bytes bytes (min $min)"
+	return 0
+}
+
+my_cam_reboot_if_requested() {
+	if [ "${MY_CAM_REBOOT:-0}" = 1 ]; then
+		echo "rebooting board (MY_CAM_REBOOT=1)..."
+		reboot
+	fi
+}

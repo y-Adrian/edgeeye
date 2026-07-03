@@ -12,6 +12,8 @@
 #define CAM_DEFAULT_H264_PATH      "/tmp/frame.h264"
 #define CAM_DEFAULT_RTSP_PORT      8554
 #define CAM_DEFAULT_RTSP_URL       "cam0"
+#define CAM_DUAL_RTSP_URL0         "cam0"
+#define CAM_DUAL_RTSP_URL1         "cam1"
 #define CAM_DEFAULT_STREAM_SEC     30
 
 #define CAM_VPSS_GRP_ID            0

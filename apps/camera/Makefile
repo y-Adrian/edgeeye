@@ -23,6 +23,7 @@ COMMON_SRCS := sample_common_sys.c sample_common_platform.c sample_common_vi.c \
 CAM_SRCS := my_cam_test.c \
             cam_app_context.c \
             cam_isp_tuning.c \
+            cam_pipeline_mode.c \
             cam_vi_bringup.c \
             cam_vpss_capture.c \
             cam_venc_encode.c \

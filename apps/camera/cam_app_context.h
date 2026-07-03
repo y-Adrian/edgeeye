@@ -27,6 +27,7 @@ extern int g_cam_venc_stream_timeout[CAM_MAX_SENSORS];
 extern chnInputCfg g_cam_venc_ic;
 extern CVI_BOOL g_cam_rtsp_up;
 extern CVI_RTSP_CTX *g_cam_rtsp_ctx;
-extern CVI_RTSP_SESSION *g_cam_rtsp_session;
+extern CVI_RTSP_SESSION *g_cam_rtsp_sessions[CAM_MAX_SENSORS];
+extern int g_cam_rtsp_session_mask;
 
 #endif /* CAM_APP_CONTEXT_H */
