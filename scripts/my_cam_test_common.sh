@@ -54,7 +54,6 @@ my_cam_stop_media() {
 
 my_cam_resolve_dual_sensor() {
 	INI=/mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
-	PQ="${PQ_BIN:-cvi_sdr_bin_GC2083}"
 	PAT_GC2083=GC2083
 	PAT_OV5647=OV5647
 
@@ -71,13 +70,21 @@ my_cam_resolve_dual_sensor() {
 my_cam_link_dual_sensor() {
 	my_cam_resolve_dual_sensor || return 1
 	ln -sf "$INI" /mnt/data/sensor_cfg.ini
-	ln -sf "$PQ" /mnt/cfg/param/cvi_sdr_bin
 	if readlink -f /mnt/data/sensor_cfg.ini >/dev/null 2>&1; then
 		echo "sensor_cfg -> $(readlink -f /mnt/data/sensor_cfg.ini)"
 	else
 		echo "sensor_cfg -> $(readlink /mnt/data/sensor_cfg.ini)"
 	fi
-	echo "cvi_sdr_bin -> $(readlink /mnt/cfg/param/cvi_sdr_bin)"
+	echo "PQ: pipe0<-/mnt/cfg/param/cvi_sdr_bin_GC2083"
+	echo "PQ: pipe1<-/mnt/cfg/param/cvi_sdr_bin_OV5647.bin (my_cam_test loads per pipe)"
+	[ -f /mnt/cfg/param/cvi_sdr_bin_GC2083 ] || [ -L /mnt/cfg/param/cvi_sdr_bin_GC2083 ] || {
+		echo "missing /mnt/cfg/param/cvi_sdr_bin_GC2083"
+		return 1
+	}
+	[ -f /mnt/cfg/param/cvi_sdr_bin_OV5647.bin ] || [ -L /mnt/cfg/param/cvi_sdr_bin_OV5647.bin ] || {
+		echo "missing /mnt/cfg/param/cvi_sdr_bin_OV5647.bin"
+		return 1
+	}
 	grep -E 'dev_num|name|bus_id' /mnt/data/sensor_cfg.ini || true
 }
 

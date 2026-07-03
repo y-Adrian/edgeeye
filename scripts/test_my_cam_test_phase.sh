@@ -2,7 +2,7 @@
 # test_my_cam_test_phase.sh — 按阶段 + 传感器验收 my_cam_test
 #
 # 用法：
-#   ./test_my_cam_test_phase.sh <2|3|4|5|6|7> [gc2083|ov5647]
+#   ./test_my_cam_test_phase.sh <2|3|4|5|6|7|8> [gc2083|ov5647]
 #
 # 须与 my_cam_test_common.sh、test_my_cam_test*.sh 放在同一目录。
 # 板上部署：scp scripts/test_my_cam_test*.sh scripts/my_cam_test_common.sh root@192.168.42.1:/root/
@@ -13,12 +13,12 @@ SENSOR="${2:-gc2083}"
 DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 
 case "$PHASE" in
-2|3|4|5|6|7) ;;
+2|3|4|5|6|7|8) ;;
 *)
-	echo "usage: $0 <2|3|4|5|6|7> [gc2083|ov5647]"
+	echo "usage: $0 <2|3|4|5|6|7|8> [gc2083|ov5647]"
 	echo "  gc2083 = J1 Milk-V CAM-GC2083"
 	echo "  ov5647 = J2 树莓派 OV5647"
-	echo "  phase 6/7 = dual (mixed ini, no sensor arg)"
+	echo "  phase 6/7/8 = dual (mixed ini, no sensor arg)"
 	exit 1
 	;;
 esac
@@ -27,6 +27,8 @@ if [ "$PHASE" = 6 ]; then
 	CHILD="$DIR/test_my_cam_test_phase6.sh"
 elif [ "$PHASE" = 7 ]; then
 	CHILD="$DIR/test_my_cam_test_phase7.sh"
+elif [ "$PHASE" = 8 ]; then
+	CHILD="$DIR/test_my_cam_test_phase8.sh"
 elif [ "$PHASE" = 2 ]; then
 	CHILD="$DIR/test_my_cam_test.sh"
 else

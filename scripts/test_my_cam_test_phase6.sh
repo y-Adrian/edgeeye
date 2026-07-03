@@ -28,6 +28,8 @@ cat "$LOG"
 grep -q 'dev_num=2' "$LOG" || { echo "FAIL: dev_num not 2"; exit 1; }
 grep -qi 'GC2083.*Init OK' "$LOG" || { echo "FAIL: no GC2083 Init OK"; exit 1; }
 grep -qi 'OV5647.*Init OK' "$LOG" || { echo "FAIL: no OV5647 Init OK"; exit 1; }
+grep -q 'PQ loaded pipe0' "$LOG" || { echo "FAIL: no PQ pipe0"; exit 1; }
+grep -q 'PQ loaded pipe1' "$LOG" || { echo "FAIL: no PQ pipe1"; exit 1; }
 grep -q 'dual VI/ISP OK' "$LOG" || { echo "FAIL: no dual VI OK line"; exit 1; }
 grep -q 'PASSED (phase 6)' "$LOG" || { echo "FAIL: no PASSED"; exit 1; }
 

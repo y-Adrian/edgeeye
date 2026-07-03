@@ -31,7 +31,7 @@ for s in check_vendor_media.sh run_security.sh stop_security.sh install_autostar
          rtsp_single_gc2083.sh preview_gc2083_554.sh rtsp_single_ov5647.sh rtsp_recover.sh rtsp_diagnose.sh \
          test_single_cam.sh test_my_cam_test.sh test_my_cam_test_phase.sh \
          test_my_cam_test_phase3.sh test_my_cam_test_phase4.sh test_my_cam_test_phase5.sh \
-         test_my_cam_test_phase6.sh test_my_cam_test_phase7.sh my_cam_test_common.sh; do
+         test_my_cam_test_phase6.sh test_my_cam_test_phase7.sh test_my_cam_test_phase8.sh my_cam_test_common.sh; do
     if [ -f "$SCRIPT_DIR/$s" ]; then
         scp "$SCRIPT_DIR/$s" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
     fi

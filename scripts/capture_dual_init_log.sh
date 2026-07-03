@@ -50,7 +50,6 @@ if [ ! -f "$DUAL_INI" ]; then
 fi
 
 ln -sf "$DUAL_INI" /mnt/data/sensor_cfg.ini
-ln -sf cvi_sdr_bin_GC2083 /mnt/cfg/param/cvi_sdr_bin
 
 {
 	echo "=== dual init capture $(date -Iseconds 2>/dev/null || date) ==="

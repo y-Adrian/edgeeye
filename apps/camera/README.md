@@ -148,9 +148,9 @@ scripts/test_my_cam_test_phase6.sh
 /root/test_my_cam_test_phase.sh 6
 ```
 
-日志应含 `dev_num=2`、两路 `Init OK`、`dual VI/ISP OK` 与 `PASSED (phase 6)`。
+日志应含 `dev_num=2`、两路 `Init OK`、`PQ loaded pipe0` / `PQ loaded pipe1`、`dual VI/ISP OK` 与 `PASSED (phase 6)`。
 
-PQ bin 暂用 `cvi_sdr_bin_GC2083`（阶段 6 只验初始化）；后续 VPSS/RTSP 双摄可能需合并 bin。
+双摄 PQ：`my_cam_test` 按 pipe 分别加载 `cvi_sdr_bin_GC2083`（J1）与 `cvi_sdr_bin_OV5647.bin`（J2），**不要**只软链一个 `cvi_sdr_bin`。长期产品可再用 PQ Tool 合并为单个 bin（见 `docs/CAMERA_VERIFY.md` 阶段 F）。
 
 ## 阶段 7：双摄 VPSS 抓帧
 
@@ -159,6 +159,14 @@ scripts/test_my_cam_test_phase7.sh
 ```
 
 输出 `/tmp/cam0.yuv`（J1 GC2083）、`/tmp/cam1.yuv`（J2 OV5647）。日志应含 `dual VPSS capture OK` 与 `PASSED (phase 7)`。
+
+## 阶段 8：双摄 H.264 写文件
+
+```bash
+scripts/test_my_cam_test_phase8.sh
+```
+
+输出 `/tmp/cam0.h264`、`/tmp/cam1.h264`。日志应含 `dual VENC capture OK` 与 `PASSED (phase 8)`。
 
 ### 调试（程序异常退出时）
 
