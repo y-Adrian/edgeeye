@@ -2,7 +2,7 @@
 # stop_security.sh — 停止安防栈并卸载 debris.ko
 set -e
 
-for s in stop_rtsp.sh stop_motion_watch.sh stop_motion_recorder.sh; do
+for s in stop_rtsp.sh stop_motion_watch.sh stop_motion_recorder.sh stop_my_cam_rtsp.sh; do
     if [ -x "/root/stream/$s" ]; then
         sh "/root/stream/$s" 2>/dev/null || true
     elif [ -x "/root/$s" ]; then

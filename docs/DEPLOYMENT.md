@@ -29,14 +29,38 @@ export LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib:/mnt/system/usr/lib/3
 
 If `rtsp_server` missing: `build_middleware && build_cvi_rtsp` in SDK.
 
-## Autostart
+## Autostart (edgeeye_cam)
 
 ```bash
+# 编辑配置（mode / port / res）
+vi /root/edgeeye_cam.conf
+
+# 安装开机自启
 ./install_autostart.sh
-/etc/init.d/S99debris_security start
+/etc/init.d/S99edgeeye_cam start
+
+# 验证
+./health_check.sh
+reboot   # 插电后 Mac 直接 ffplay，无需 SSH
 ```
 
-## Architecture
+Legacy security stack: `./install_autostart.sh security`
+
+## Architecture (edgeeye_cam)
+
+```
+GC2083 (J1) + OV5647 (J2)
+        |
+   edgeeye_cam (VI/ISP/VPSS/VENC)
+        |
+   RTSP :8554/cam0 + cam1
+        |
+   Mac ffplay / ffmpeg
+```
+
+Config: `/root/edgeeye_cam.conf` — see `configs/edgeeye_cam.conf`.
+
+## Architecture (legacy run_security)
 
 ```
 OV5647 --I2C--> debris.ko (sensor init, GPIO motion)

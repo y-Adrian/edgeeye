@@ -6,35 +6,67 @@
 
 ## 当前状态（2026-07）
 
-### 已完成基础能力
+### 已完成
 
 - Duo S 板级构建、部署链路
-- `debris.ko` 及基础板级支持可用
-- **双摄分别可预览**（归档见 `docs/CAMERA_BRINGUP_ARCHIVE.md`）
-  - OV5647：`8554/cam0`（rtsp_server）
-  - GC2083：`554/h264`（camera-test）
-- motion / recorder / health / autostart / stability 脚本已具备骨架
-- 混搭双摄 ini/json 已存在
+- **`edgeeye_cam` 产品程序**：单摄/双摄 CLI、`--res` 三档分辨率
+- **双摄 RTSP 同时出图**（GC2083 cam0 + OV5647 cam1 @8554）
+- Mac 预览脚本 `preview_my_cam_rtsp_mac.sh`
+- 库/测试分离：`apps/camera` + `tests/camera/my_cam_test`
+- **阶段 B 产品化**：
+  - `/root/edgeeye_cam.conf` 配置文件
+  - `run_edgeeye_cam.sh` + `install_autostart.sh` 开机自启
+  - `health_check.sh` 巡检 edgeeye_cam / RTSP 双路
 
-### 当前阻塞
+### 历史能力（仍可用）
 
-- ISSUE-002 部分收口：GC2083 **不能**走 `rtsp_server` @8554
-- M2 同时双流：混合双栈不可行；须 `cam_dual` 或修 GC2083
-- 混搭双摄需要 PQ bin 方案
-- 浏览器查看、YOLO、本地通知尚未实现
+- `debris.ko` 及动检 ioctl
+- 旧 `rtsp_server` / `run_security.sh` 安防栈（`install_autostart.sh security`）
 
-## 与形态三里程碑对照
+### 待做
+
+- 本地录像 / 动检联动（阶段 C）
+- 6h 长稳 `stability_6h.sh` 双摄验收
+- 浏览器预览、YOLO、本地通知
+
+## 里程碑对照
 
 | 里程碑 | 状态 |
 |--------|------|
-| M1 统一 RTSP（GC2083 @ 8554） | ❌ 阻塞（554 workaround 可用） |
-| M2 双路同时直播 | 未开始（ISSUE-003） |
-| M3 安防栈整合 | 未开始 |
-| M4 插电即用 | 未开始 |
-| M5 6h 长稳 | 未开始 |
+| M1 统一 RTSP @8554 | ✅ `edgeeye_cam`（含 GC2083） |
+| M2 双路同时直播 | ✅ dual 模式已验证 |
+| M3 安防栈整合 | 部分（动检/录像脚本在，未与 edgeeye_cam 合并） |
+| M4 插电即用 | ✅ 自启 + 配置文件 |
+| M5 6h 长稳 | 待跑 |
 
-## 当前建议优先级
+## 常用命令
 
-1. 新建 ISSUE-003：`rtsp_dual_mixed` + 双摄同时直播
-2. 并行向 Milk-V 问 GC2083 @ rtsp_server 方案
-3. 日常预览用 `CAMERA_BRINGUP_ARCHIVE.md` 配方
+```bash
+# 编译部署
+make app && ./deploy
+
+# 手动启动（读配置）
+./start_my_cam_rtsp.sh
+
+# 开机自启
+./install_autostart.sh && reboot
+
+# 健康检查
+./health_check.sh
+
+# Mac 预览
+./scripts/preview_my_cam_rtsp_mac.sh --mode dual --cam both --start-board
+```
+
+## 配置文件
+
+`/root/edgeeye_cam.conf`：
+
+```ini
+mode=dual
+port=8554
+res=720p
+boot_delay=8
+```
+
+模板：`configs/edgeeye_cam.conf`

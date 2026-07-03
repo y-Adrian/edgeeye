@@ -49,12 +49,19 @@ if ! lsmod | grep -q '^debris '; then
 fi
 
 if [ "$MODE" = "full" ]; then
+    if [ -x "$ROOT/stop_my_cam_rtsp.sh" ]; then
+        sh "$ROOT/stop_my_cam_rtsp.sh" >>"$LOG" 2>&1 || true
+    fi
     if [ -x "$ROOT/stop_security.sh" ]; then
         sh "$ROOT/stop_security.sh" >>"$LOG" 2>&1 || true
         sleep 1
     fi
-    if [ -x "$ROOT/run_security.sh" ]; then
-        log "starting run_security.sh..."
+    if [ -x "$ROOT/run_edgeeye_cam.sh" ] && [ -x "$ROOT/edgeeye_cam" ]; then
+        log "starting run_edgeeye_cam.sh..."
+        sh "$ROOT/run_edgeeye_cam.sh" >>"$LOG" 2>&1 || true
+        sleep 5
+    elif [ -x "$ROOT/run_security.sh" ]; then
+        log "starting run_security.sh (legacy)..."
         sh "$ROOT/run_security.sh" >>"$LOG" 2>&1 || true
         sleep 3
     fi
@@ -88,6 +95,10 @@ tc_u06() {
 
 # RTSP port / process
 tc_rtsp() {
+    if [ -f /tmp/edgeeye_cam_rtsp.pid ] && kill -0 "$(cat /tmp/edgeeye_cam_rtsp.pid)" 2>/dev/null; then
+        log "edgeeye_cam pid $(cat /tmp/edgeeye_cam_rtsp.pid)"
+        return 0
+    fi
     if [ -f /tmp/rtsp_server.pid ] && kill -0 "$(cat /tmp/rtsp_server.pid)" 2>/dev/null; then
         log "rtsp_server pid $(cat /tmp/rtsp_server.pid)"
         return 0
@@ -134,7 +145,7 @@ run_case "TC-U01 motion_recorder dry-run" tc_u01 || true
 run_case "TC-U03 health_check" tc_u03 || true
 run_case "TC-U04 setup_dual_camera" tc_u04 || true
 run_case "TC-U06 sync_probe" tc_u06 || true
-run_case "RTSP server / port 8554" tc_rtsp || true
+run_case "RTSP edgeeye_cam / port 8554" tc_rtsp || true
 run_case "TC-U02 record_clip" tc_u02 || true
 run_case "TC-25 motion_ioctl (test_debris)" tc_motion_smoke || true
 run_case "vendor media check" tc_vendor || true
@@ -149,5 +160,6 @@ log "  ffmpeg -rtsp_transport tcp -i rtsp://192.168.42.1:8554/cam0 -c copy -t 10
 log ""
 log "Optional long-run: nohup ./stability_6h.sh 6 &"
 log "Autostart test: ./install_autostart.sh && reboot"
+log "Config: /root/edgeeye_cam.conf (mode/port/res)"
 
 [ "$FAIL" -eq 0 ]

@@ -50,14 +50,6 @@ edgeeye_cam --dual -r 480p
 # 可选：-P 8554  -v
 ```
 
-或通过启动脚本（推荐，含媒体栈清理）：
-
-```bash
-./start_my_cam_rtsp.sh gc2083
-./start_my_cam_rtsp.sh ov5647
-./start_my_cam_rtsp.sh dual --reboot
-```
-
 | 档位 | 分辨率 | 码率约 |
 |------|--------|--------|
 | `1080p` / `high` | 1920×1080 | 4096 Kbps |
@@ -65,6 +57,31 @@ edgeeye_cam --dual -r 480p
 | `480p` / `low` | 640×480 | 1024 Kbps |
 
 VI/ISP 始终在 sensor 原生 1080p 采集；VPSS 缩放到所选档位后送 VENC/RTSP。
+
+配置文件模板：`configs/edgeeye_cam.conf` → 部署到 `/root/edgeeye_cam.conf`
+
+或通过启动脚本（推荐，含媒体栈清理；无参数时读 `/root/edgeeye_cam.conf`）：
+
+```bash
+./start_my_cam_rtsp.sh
+./start_my_cam_rtsp.sh dual --res 720p
+```
+
+## 开机自启
+
+```bash
+# 部署后编辑板端配置
+vi /root/edgeeye_cam.conf   # mode=dual port=8554 res=720p
+
+./install_autostart.sh
+reboot
+# Mac: ffplay rtsp://192.168.42.1:8554/cam0
+```
+
+```bash
+./health_check.sh           # 巡检进程 + RTSP 双路
+./verify_board.sh full      # 含 run_edgeeye_cam 启动验收
+```
 
 ## Mac 预览
 

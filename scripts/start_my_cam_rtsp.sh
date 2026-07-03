@@ -2,27 +2,34 @@
 # start_my_cam_rtsp.sh — 在板子上启动 EdgeEye RTSP 预览（edgeeye_cam）
 #
 # 用法：
+#   ./start_my_cam_rtsp.sh                    # 读 edgeeye_cam.conf
 #   ./start_my_cam_rtsp.sh gc2083
-#   ./start_my_cam_rtsp.sh ov5647
-#   ./start_my_cam_rtsp.sh dual
+#   ./start_my_cam_rtsp.sh dual --res 720p
 #   ./start_my_cam_rtsp.sh dual --reboot
-#   ./start_my_cam_rtsp.sh gc2083 --fg
 #
 # 默认后台运行；日志写到 /tmp/edgeeye_cam_rtsp.log
 set -e
 
-MODE="gc2083"
-PORT="${RTSP_PORT:-8554}"
-RES=""
+DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+# shellcheck disable=SC1091
+. "$DIR/edgeeye_cam_common.sh"
+edgeeye_load_config
+
+MODE="$EDGEEYE_MODE"
+PORT="$EDGEEYE_PORT"
+RES="$EDGEEYE_RES"
+CLI_MODE=0
+CLI_PORT=0
+CLI_RES=0
 FG=0
 DO_REBOOT=0
 PIDFILE=/tmp/edgeeye_cam_rtsp.pid
 LOG=/tmp/edgeeye_cam_rtsp.log
 BIN="${EDGEEYE_CAM:-/root/edgeeye_cam}"
-DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 
 usage() {
 	echo "usage: $0 [gc2083|ov5647|dual] [--reboot] [--fg] [--port N] [--res 1080p|720p|480p]"
+	echo "  无 positional 参数时使用 $EDGEEYE_CONF"
 	echo "  dual 建议加 --reboot（单摄切双摄后 ION 常不足）"
 }
 
@@ -51,6 +58,7 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 	gc2083|ov5647|dual)
 		MODE="$1"
+		CLI_MODE=1
 		shift
 		;;
 	--reboot)
@@ -63,10 +71,12 @@ while [ $# -gt 0 ]; do
 		;;
 	--port)
 		PORT="$2"
+		CLI_PORT=1
 		shift 2
 		;;
 	--res|-r)
 		RES="$2"
+		CLI_RES=1
 		shift 2
 		;;
 	-h|--help)
@@ -80,6 +90,10 @@ while [ $# -gt 0 ]; do
 		;;
 	esac
 done
+
+[ "$CLI_MODE" -eq 0 ] && MODE="$EDGEEYE_MODE"
+[ "$CLI_PORT" -eq 0 ] && PORT="${RTSP_PORT:-$EDGEEYE_PORT}"
+[ "$CLI_RES" -eq 0 ] && RES="$EDGEEYE_RES"
 
 . "$DIR/my_cam_test_common.sh"
 
