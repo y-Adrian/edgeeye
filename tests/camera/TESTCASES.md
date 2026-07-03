@@ -96,6 +96,24 @@ tests/camera/run_board_tests.sh
 | `dual-legacy` | 旧脚本 phase 6/7/8 |
 | `full` | 上述 single + dual + dual-legacy |
 
+### 板端启动 + Mac 预览
+
+```bash
+# 1) deploy 到板子
+make app && ./deploy
+
+# 2) 板子上启动 RTSP（单摄 / 双摄）
+ssh root@192.168.42.1 '/root/start_my_cam_rtsp.sh gc2083'
+ssh root@192.168.42.1 '/root/start_my_cam_rtsp.sh dual'
+
+# 3) Mac 上预览
+./scripts/preview_my_cam_rtsp_mac.sh --mode gc2083
+./scripts/preview_my_cam_rtsp_mac.sh --mode dual --cam both
+
+# 也可由 Mac 一条命令先 SSH 启动板子，再本机预览
+./scripts/preview_my_cam_rtsp_mac.sh --mode dual --cam both --start-board
+```
+
 ---
 
 ## 功能覆盖矩阵

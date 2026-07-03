@@ -107,16 +107,10 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 	SAMPLE_VI_INFO_S *pstViInfo = NULL;
 	SAMPLE_SNS_TYPE_E sns_type;
 
-	s32Ret = SAMPLE_COMM_VI_GetSizeBySensor(pstViConfig->astViInfo[ViDev].stSnsInfo.enSnsType,
-						&enPicSize);
+	/* 与 SAMPLE_PLAT_VI_INIT 对齐：须先 StartSensor/MIPI，否则 StartViChn ION 失败 */
+	s32Ret = SAMPLE_COMM_VI_StartSensor(pstViConfig);
 	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: GetSizeBySensor failed %#x\n", s32Ret);
-		return s32Ret;
-	}
-
-	s32Ret = SAMPLE_COMM_SYS_GetPicSize(enPicSize, &stSize);
-	if (s32Ret != CVI_SUCCESS) {
-		printf("my_cam_test: GetPicSize failed %#x\n", s32Ret);
+		printf("my_cam_test: StartSensor failed %#x\n", s32Ret);
 		return s32Ret;
 	}
 
@@ -129,22 +123,46 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 		}
 	}
 
+	s32Ret = SAMPLE_COMM_VI_StartMIPI(pstViConfig);
+	if (s32Ret != CVI_SUCCESS) {
+		printf("my_cam_test: StartMIPI failed %#x\n", s32Ret);
+		goto err_destroy_vi;
+	}
+
+	s32Ret = SAMPLE_COMM_VI_SensorProbe(pstViConfig);
+	if (s32Ret != CVI_SUCCESS) {
+		printf("my_cam_test: SensorProbe failed %#x\n", s32Ret);
+		goto err_destroy_vi;
+	}
+
 	memset(&stPipeAttr, 0, sizeof(stPipeAttr));
 	stPipeAttr.bYuvSkip = CVI_FALSE;
-	stPipeAttr.u32MaxW = stSize.u32Width;
-	stPipeAttr.u32MaxH = stSize.u32Height;
 	stPipeAttr.enPixFmt = PIXEL_FORMAT_RGB_BAYER_12BPP;
 	stPipeAttr.enBitWidth = DATA_BITWIDTH_12;
 	stPipeAttr.stFrameRate.s32SrcFrameRate = -1;
 	stPipeAttr.stFrameRate.s32DstFrameRate = -1;
 	stPipeAttr.bNrEn = CVI_TRUE;
 	stPipeAttr.bYuvBypassPath = CVI_FALSE;
-	stPipeAttr.enCompressMode = pstViConfig->astViInfo[0].stChnInfo.enCompressMode;
 
 	for (i = 0; i < pstViConfig->s32WorkingViNum; i++) {
 		s32DevNum = pstViConfig->as32WorkingViId[i];
 		pstViInfo = &pstViConfig->astViInfo[s32DevNum];
 		sns_type = pstViInfo->stSnsInfo.enSnsType;
+
+		s32Ret = SAMPLE_COMM_VI_GetSizeBySensor(sns_type, &enPicSize);
+		if (s32Ret != CVI_SUCCESS) {
+			printf("my_cam_test: GetSizeBySensor pipe%d failed %#x\n", i, s32Ret);
+			goto err_destroy_vi;
+		}
+		s32Ret = SAMPLE_COMM_SYS_GetPicSize(enPicSize, &stSize);
+		if (s32Ret != CVI_SUCCESS) {
+			printf("my_cam_test: GetPicSize pipe%d failed %#x\n", i, s32Ret);
+			goto err_destroy_vi;
+		}
+
+		stPipeAttr.u32MaxW = stSize.u32Width;
+		stPipeAttr.u32MaxH = stSize.u32Height;
+		stPipeAttr.enCompressMode = pstViInfo->stChnInfo.enCompressMode;
 		stPipeAttr.bYuvBypassPath = SAMPLE_COMM_VI_GetYuvBypassSts(sns_type);
 
 		for (j = 0; j < WDR_MAX_PIPE_NUM; j++) {
@@ -186,6 +204,8 @@ CVI_S32 cam_isp_dual_plat_vi_init(SAMPLE_VI_CONFIG_S *pstViConfig)
 		goto err_destroy_vi;
 	}
 
+	printf("my_cam_test: dual VI/ISP/chn OK (%d sensors)\n",
+	       pstViConfig->s32WorkingViNum);
 	return CVI_SUCCESS;
 
 err_destroy_vi:

@@ -22,6 +22,9 @@ for s in \
 	test_my_cam_test_phase8.sh \
 	test_my_cam_test_dual.sh \
 	test_my_cam_test_suite.sh \
+	start_my_cam_rtsp.sh \
+	stop_my_cam_rtsp.sh \
+	preview_my_cam_rtsp_mac.sh \
 	my_cam_test_common.sh
 do
 	assert_grep_file "$s" "$DEPLOY"

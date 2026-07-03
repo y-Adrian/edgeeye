@@ -20,6 +20,9 @@ for f in \
 	"$ROOT/scripts/test_my_cam_test_phase8.sh" \
 	"$ROOT/scripts/test_my_cam_test_dual.sh" \
 	"$ROOT/scripts/test_my_cam_test_suite.sh" \
+	"$ROOT/scripts/start_my_cam_rtsp.sh" \
+	"$ROOT/scripts/stop_my_cam_rtsp.sh" \
+	"$ROOT/scripts/preview_my_cam_rtsp_mac.sh" \
 	"$ROOT/tests/camera/run_local_tests.sh" \
 	"$ROOT/tests/camera/run_board_tests.sh" \
 	"$ROOT/tests/camera/run_e2e.sh"

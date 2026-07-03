@@ -52,6 +52,24 @@ my_cam_stop_media() {
 	rmmod debris 2>/dev/null || true
 }
 
+# 双摄前深度清理（停 vendor RTSP / 安防栈），仍不够时需 reboot
+my_cam_stop_media_deep() {
+	my_cam_stop_media
+	if [ -x /root/stop_security.sh ]; then
+		sh /root/stop_security.sh 2>/dev/null || true
+	fi
+	if [ -x /root/stream/stop_rtsp.sh ]; then
+		sh /root/stream/stop_rtsp.sh 2>/dev/null || true
+	elif [ -x /root/stop_rtsp.sh ]; then
+		sh /root/stop_rtsp.sh 2>/dev/null || true
+	fi
+	if [ -f /tmp/my_cam_test_rtsp.pid ]; then
+		kill "$(cat /tmp/my_cam_test_rtsp.pid)" 2>/dev/null || true
+		rm -f /tmp/my_cam_test_rtsp.pid
+	fi
+	sleep 3
+}
+
 my_cam_resolve_dual_sensor() {
 	INI=/mnt/data/sensor_cfg_GC2083_OV5647_dual.ini
 	PAT_GC2083=GC2083

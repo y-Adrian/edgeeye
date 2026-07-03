@@ -37,6 +37,18 @@ ssh root@192.168.42.1 '/root/test_my_cam_test_phase.sh 7'
 # Mac 批量：tests/camera/run_board_tests.sh
 ```
 
+**RTSP 预览：**
+
+```bash
+# 板子上启动
+ssh root@192.168.42.1 '/root/start_my_cam_rtsp.sh gc2083'
+ssh root@192.168.42.1 '/root/start_my_cam_rtsp.sh dual'
+
+# Mac 上预览
+./scripts/preview_my_cam_rtsp_mac.sh --mode gc2083
+./scripts/preview_my_cam_rtsp_mac.sh --mode dual --cam both
+```
+
 ## 阶段 2：`my_cam_test -p 2`
 
 仅初始化 VI + ISP，不推流。等价于精简版 `sample_sensor_test`。

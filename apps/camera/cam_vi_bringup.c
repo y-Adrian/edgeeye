@@ -72,10 +72,13 @@ static CVI_S32 setup_vb_pool(const SAMPLE_INI_CFG_S *pstIniCfg,
 	CVI_U32 vb_cnt = 3;
 	CVI_BOOL dual_vpss = cam_is_dual() && cam_phase_needs_vpss(g_cam_phase);
 
-	if (g_cam_phase >= 4 && g_cam_phase <= 5)
+	if (cam_is_dual() && cam_phase_needs_vpss(g_cam_phase)) {
+		vb_cnt = (g_cam_phase >= 4) ? 10 : 8;
+	} else if (g_cam_phase >= 4 && g_cam_phase <= 5) {
 		vb_cnt = 8;
-	else if (g_cam_phase == 3 || dual_vpss)
+	} else if (g_cam_phase == 3 || dual_vpss) {
 		vb_cnt = 8;
+	}
 
 	memset(pstVbConf, 0, sizeof(*pstVbConf));
 

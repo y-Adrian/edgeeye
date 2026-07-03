@@ -1,0 +1,7 @@
+#!/bin/sh
+# 移除 Cursor 自动追加的 Co-authored-by 行（保留用户编写的其它 trailer）
+case "$2,$3" in
+merge,*|squash,*) exit 0 ;;
+esac
+tmp="${1}.cursor-strip"
+grep -vi '^Co-authored-by: Cursor <cursoragent@cursor.com>$' "$1" >"$tmp" && mv "$tmp" "$1"
