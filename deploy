@@ -23,8 +23,9 @@ if [ -z "$FILES" ]; then
 fi
 
 scp $FILES "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
-for s in check_vendor_media.sh run_security.sh run_edgeeye_cam.sh stop_security.sh install_autostart.sh \
-         edgeeye_cam_common.sh \
+for s in check_vendor_media.sh run_security.sh run_edgeeye_cam.sh run_edgeeye_stack.sh \
+         stop_edgeeye_stack.sh stop_security.sh install_autostart.sh \
+         edgeeye_cam_common.sh edgeeye_snapshots.sh serve_edgeeye_web.sh \
          motion_watch.sh stop_motion_watch.sh record_clip.sh setup_dual_camera.sh \
          health_check.sh stability_6h.sh stop_motion_recorder.sh media_tools.sh \
          verify_board.sh reset_single_camera.sh rtsp_preview_only.sh select_pq_bin.sh \
@@ -45,5 +46,9 @@ if [ -d "$OUT_DIR/stream" ]; then
 fi
 if [ -f "$ROOT_DIR/configs/edgeeye_cam.conf" ]; then
     scp "$ROOT_DIR/configs/edgeeye_cam.conf" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
+fi
+if [ -d "$ROOT_DIR/web" ]; then
+    ssh "$BOARD_USER@$BOARD_IP" "mkdir -p $BOARD_DIR/web/snapshots"
+    scp -r "$ROOT_DIR/web/"* "$BOARD_USER@$BOARD_IP:$BOARD_DIR/web/"
 fi
 echo "deployed to $BOARD_USER@$BOARD_IP:$BOARD_DIR"

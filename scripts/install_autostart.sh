@@ -11,8 +11,8 @@ INIT_EDGE=/etc/init.d/S99edgeeye_cam
 INIT_SEC=/etc/init.d/S99debris_security
 
 install_edgeeye() {
-	if [ ! -x /root/run_edgeeye_cam.sh ]; then
-		echo "missing /root/run_edgeeye_cam.sh — deploy scripts first"
+	if [ ! -x /root/run_edgeeye_stack.sh ]; then
+		echo "missing /root/run_edgeeye_stack.sh — deploy scripts first"
 		exit 1
 	fi
 
@@ -20,11 +20,11 @@ install_edgeeye() {
 #!/bin/sh
 case "$1" in
     start)
-        /root/run_edgeeye_cam.sh &
+        /root/run_edgeeye_stack.sh &
         ;;
     stop)
-        if [ -x /root/stop_my_cam_rtsp.sh ]; then
-            /root/stop_my_cam_rtsp.sh
+        if [ -x /root/stop_edgeeye_stack.sh ]; then
+            /root/stop_edgeeye_stack.sh
         fi
         ;;
     restart)

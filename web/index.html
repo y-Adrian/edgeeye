@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EdgeEye 双摄</title>
+  <style>
+    :root { --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9cb3; --accent: #3d8bfd; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .cam { background: var(--card); border-radius: 10px; overflow: hidden; }
+    .cam h2 { font-size: 1rem; margin: 0; padding: 0.75rem 1rem; border-bottom: 1px solid #2a3548; }
+    .cam img { width: 100%; display: block; background: #000; min-height: 180px; object-fit: contain; }
+    .links { padding: 0.75rem 1rem; font-size: 0.85rem; }
+    .links a { color: var(--accent); word-break: break-all; }
+    .info { background: var(--card); border-radius: 10px; padding: 1rem; margin-top: 1rem; font-size: 0.85rem; }
+    code { background: #2a3548; padding: 0.1em 0.35em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>EdgeEye 实时预览</h1>
+  <p class="sub" id="status">加载中…</p>
+
+  <div class="grid">
+    <div class="cam">
+      <h2>cam0 — GC2083</h2>
+      <img id="img0" src="snapshots/cam0.jpg?t=0" alt="cam0">
+      <div class="links">RTSP: <a id="rtsp0" href="#">cam0</a></div>
+    </div>
+    <div class="cam" id="card1">
+      <h2>cam1 — OV5647</h2>
+      <img id="img1" src="snapshots/cam1.jpg?t=0" alt="cam1">
+      <div class="links">RTSP: <a id="rtsp1" href="#">cam1</a></div>
+    </div>
+  </div>
+
+  <div class="info">
+    <p><strong>高清直播（Mac / VLC）</strong></p>
+    <p><code>ffplay -rtsp_transport tcp rtsp://IP:8554/cam0</code></p>
+    <p id="dualHint"><code>ffplay -rtsp_transport tcp rtsp://IP:8554/cam1</code></p>
+    <p>快照约 3 秒刷新；无画面时请确认板端 <code>edgeeye_cam</code> 与 ffmpeg 已运行。</p>
+  </div>
+
+  <script>
+    function refreshImages() {
+      var t = Date.now();
+      document.getElementById('img0').src = 'snapshots/cam0.jpg?t=' + t;
+      var img1 = document.getElementById('img1');
+      if (img1.offsetParent !== null) img1.src = 'snapshots/cam1.jpg?t=' + t;
+    }
+
+    fetch('status.json').then(function(r) { return r.json(); }).then(function(s) {
+      var ip = s.ip || '192.168.42.1';
+      var port = s.port || 8554;
+      document.getElementById('status').textContent =
+        '模式 ' + s.mode + ' · ' + s.res + ' · ' + ip + ':' + port;
+      var u0 = 'rtsp://' + ip + ':' + port + '/cam0';
+      document.getElementById('rtsp0').href = u0;
+      document.getElementById('rtsp0').textContent = u0;
+      if (!s.dual) {
+        document.getElementById('card1').style.display = 'none';
+        document.getElementById('dualHint').style.display = 'none';
+      } else {
+        var u1 = 'rtsp://' + ip + ':' + port + '/cam1';
+        document.getElementById('rtsp1').href = u1;
+        document.getElementById('rtsp1').textContent = u1;
+      }
+    }).catch(function() {
+      document.getElementById('status').textContent = 'status.json 不可用';
+    });
+
+    setInterval(refreshImages, 3000);
+    refreshImages();
+  </script>
+</body>
+</html>

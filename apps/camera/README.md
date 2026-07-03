@@ -70,18 +70,21 @@ VI/ISP 始终在 sensor 原生 1080p 采集；VPSS 缩放到所选档位后送 V
 ## 开机自启
 
 ```bash
-# 部署后编辑板端配置
-vi /root/edgeeye_cam.conf   # mode=dual port=8554 res=720p
+vi /root/edgeeye_cam.conf   # mode / port / res / record / web
 
-./install_autostart.sh
+./install_autostart.sh      # → run_edgeeye_stack.sh
 reboot
-# Mac: ffplay rtsp://192.168.42.1:8554/cam0
 ```
+
+完整栈：`run_edgeeye_stack.sh` = RTSP + 可选动检录像 + Web 快照（`:8080`）。
 
 ```bash
-./health_check.sh           # 巡检进程 + RTSP 双路
-./verify_board.sh full      # 含 run_edgeeye_cam 启动验收
+./stop_edgeeye_stack.sh
+./health_check.sh
+./verify_board.sh full
 ```
+
+详见 [`docs/HOME_USER_GUIDE.md`](../../docs/HOME_USER_GUIDE.md)。
 
 ## Mac 预览
 

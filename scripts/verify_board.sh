@@ -56,10 +56,10 @@ if [ "$MODE" = "full" ]; then
         sh "$ROOT/stop_security.sh" >>"$LOG" 2>&1 || true
         sleep 1
     fi
-    if [ -x "$ROOT/run_edgeeye_cam.sh" ] && [ -x "$ROOT/edgeeye_cam" ]; then
-        log "starting run_edgeeye_cam.sh..."
-        sh "$ROOT/run_edgeeye_cam.sh" >>"$LOG" 2>&1 || true
-        sleep 5
+    if [ -x "$ROOT/run_edgeeye_stack.sh" ] && [ -x "$ROOT/edgeeye_cam" ]; then
+        log "starting run_edgeeye_stack.sh..."
+        sh "$ROOT/run_edgeeye_stack.sh" >>"$LOG" 2>&1 || true
+        sleep 8
     elif [ -x "$ROOT/run_security.sh" ]; then
         log "starting run_security.sh (legacy)..."
         sh "$ROOT/run_security.sh" >>"$LOG" 2>&1 || true

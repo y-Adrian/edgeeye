@@ -1,11 +1,27 @@
-# Web Placeholder
+# Web — EdgeEye 浏览器状态页
 
-这里预留给浏览器实时查看相关内容。
+部署到板子 `/root/web/`，由 `serve_edgeeye_web.sh` 启动 busybox httpd。
 
-当前仓库只有 RTSP 推流，没有现成浏览器前端。
+## 访问
 
-后续需要补：
+```text
+http://192.168.42.1:8080/
+```
 
-- HLS / WebRTC / RTSP-to-Web bridge 方案
-- 浏览器实时预览页面
-- 告警事件列表与录像回看入口
+- JPEG 快照约 3 秒刷新（需板载 ffmpeg + `edgeeye_snapshots.sh`）
+- 完整 RTSP 直播仍用 VLC / ffplay
+
+## 配置
+
+`/root/edgeeye_cam.conf`：
+
+```ini
+web=1
+web_port=8080
+snapshot_sec=3
+```
+
+## 说明
+
+浏览器无法直接播放 RTSP；本页提供低延迟快照预览 + RTSP 链接。
+后续可接 HLS/WebRTC 桥接。
