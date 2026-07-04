@@ -127,8 +127,7 @@ my_cam_install_sensor_configs() {
 	for ini in \
 		sensor_cfg_GC2083.ini \
 		sensor_cfg_OV5647_J2.ini \
-		sensor_cfg_GC2083_OV5647_dual.ini \
-		sensor_cfg_OV5647_dual.ini
+		sensor_cfg_GC2083_OV5647_dual.ini
 	do
 		if [ ! -f "/mnt/data/$ini" ] && [ -f "/root/stream/$ini" ]; then
 			cp "/root/stream/$ini" "/mnt/data/$ini"

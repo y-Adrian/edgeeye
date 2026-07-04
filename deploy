@@ -1,6 +1,6 @@
 #!/bin/sh
 # 用法：
-#   ./deploy           上传 output/ 下所有产物 + scripts/ + stream/
+#   ./deploy           上传 output/ 下所有产物 + scripts/ + sensor ini
 #   ./deploy debris.ko 只上传指定文件
 set -e
 
@@ -23,19 +23,18 @@ if [ -z "$FILES" ]; then
 fi
 
 scp $FILES "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
-for s in check_vendor_media.sh run_security.sh run_edgeeye_cam.sh run_edgeeye_stack.sh \
-         stop_edgeeye_stack.sh stop_security.sh install_autostart.sh \
-         edgeeye_cam_common.sh edgeeye_snapshots.sh serve_edgeeye_web.sh \
-         motion_watch.sh stop_motion_watch.sh record_clip.sh setup_dual_camera.sh \
-         health_check.sh stability_6h.sh stop_motion_recorder.sh media_tools.sh \
-         verify_board.sh reset_single_camera.sh rtsp_preview_only.sh select_pq_bin.sh \
-         setup_mixed_dual_camera.sh rtsp_dual_mixed.sh \
-         rtsp_single_gc2083.sh preview_gc2083_554.sh rtsp_single_ov5647.sh rtsp_recover.sh rtsp_diagnose.sh \
-         start_my_cam_rtsp.sh stop_my_cam_rtsp.sh preview_my_cam_rtsp_mac.sh \
-         test_single_cam.sh test_my_cam_test.sh test_my_cam_test_phase.sh \
-         test_my_cam_test_phase3.sh test_my_cam_test_phase4.sh test_my_cam_test_phase5.sh \
-         test_my_cam_test_phase6.sh test_my_cam_test_phase7.sh test_my_cam_test_phase8.sh my_cam_test_common.sh \
-         test_my_cam_test_dual.sh test_my_cam_test_suite.sh; do
+for s in \
+	run_edgeeye_cam.sh run_edgeeye_stack.sh stop_edgeeye_stack.sh \
+	edgeeye_cam_common.sh edgeeye_snapshots.sh serve_edgeeye_web.sh \
+	install_autostart.sh health_check.sh stability_6h.sh \
+	start_my_cam_rtsp.sh stop_my_cam_rtsp.sh preview_my_cam_rtsp_mac.sh \
+	my_cam_test_common.sh record_clip.sh media_tools.sh stop_motion_recorder.sh \
+	build_ffmpeg_cli.sh install_ffmpeg_cli_board.sh install_ffprobe_board.sh \
+	test_my_cam_test.sh test_my_cam_test_phase.sh \
+	test_my_cam_test_phase3.sh test_my_cam_test_phase4.sh test_my_cam_test_phase5.sh \
+	test_my_cam_test_phase6.sh test_my_cam_test_phase7.sh test_my_cam_test_phase8.sh \
+	test_my_cam_test_dual.sh test_my_cam_test_suite.sh
+do
     if [ -f "$SCRIPT_DIR/$s" ]; then
         scp "$SCRIPT_DIR/$s" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
     fi

@@ -1,5 +1,5 @@
 #!/bin/sh
-# health_check.sh — EdgeEye / 安防栈健康检查
+# health_check.sh — EdgeEye 产品栈健康检查
 #
 # 用法：./health_check.sh
 # 退出码：0=全部通过，1=存在告警
@@ -101,7 +101,7 @@ if [ "${EDGEEYE_MODE:-dual}" = "dual" ]; then
     fi
 fi
 
-# ── 可选：debris.ko / 旧安防栈 ─────────────────────────────
+# ── 可选：debris.ko / 录像 / Web ───────────────────────────
 if lsmod | grep -q '^debris '; then
     check "debris.ko loaded" 1
     if [ -f /proc/debris ]; then
@@ -109,12 +109,6 @@ if lsmod | grep -q '^debris '; then
     fi
 else
     skip "debris.ko (edgeeye_cam 不依赖驱动)"
-fi
-
-if pid_alive /tmp/rtsp_server.pid; then
-    check "rtsp_server (legacy) running" 1
-else
-    skip "rtsp_server (legacy, edgeeye_cam 已替代)"
 fi
 
 if [ -f "$ROOT/media_tools.sh" ]; then

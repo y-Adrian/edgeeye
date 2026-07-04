@@ -1,5 +1,5 @@
 #!/bin/sh
-# test_05_deploy_manifest.sh — deploy 须包含全部 my_cam_test 验收脚本
+# test_05_deploy_manifest.sh — deploy 须包含产品栈与验收脚本
 set -e
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
@@ -12,6 +12,13 @@ DEPLOY="$ROOT/deploy"
 assert_file "$DEPLOY"
 
 for s in \
+	run_edgeeye_stack.sh \
+	stop_edgeeye_stack.sh \
+	edgeeye_cam_common.sh \
+	serve_edgeeye_web.sh \
+	edgeeye_snapshots.sh \
+	health_check.sh \
+	install_autostart.sh \
 	test_my_cam_test.sh \
 	test_my_cam_test_phase.sh \
 	test_my_cam_test_phase3.sh \

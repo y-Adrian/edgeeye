@@ -26,8 +26,7 @@ cat <<'EOF'
 
 Board test:
   /mnt/data/bin/ffmpeg -version
-  /root/record_clip.sh 10 cam0
-  /root/stop_security.sh && /root/run_security.sh   # motion_recorder 将启用
+  ./record_clip.sh 10 cam0
 
 ffplay 仍无板载版本 — PC 预览：
   ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0

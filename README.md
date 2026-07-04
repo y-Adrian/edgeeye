@@ -1,85 +1,81 @@
 # EdgeEye Duo S
 
-`EdgeEye Duo S` 是一个面向 **Milk-V Duo S** 的边缘智能摄像头项目。
+Milk-V Duo S 边缘双摄 RTSP 产品：`edgeeye_cam` 单摄/双摄直播，可选 Web 快照页与动检录像。
 
-目标产品：
+## 能力
 
-- 双路 RTSP 直播
-- 本地检测 / 识别（后续接入 YOLO）
-- 本地录像
-- 报警 / 通知
-- 浏览器实时查看
-- 所有 AI 推理本地完成，不依赖云端
-
-## 当前阶段
-
-当前仓库已经具备：
-
-- 单摄 RTSP（OV5647 on 8554）
-- GC2083 单摄预览（554 fallback）
-- 运动检测 / 录像脚本骨架
-- 自启动 / 健康检查 / 长稳脚本
-- 混搭双摄配置与调试记录
-
-当前主阻塞：
-
-- GC2083 尚未稳定走统一的 `8554/cam0` 栈
-- 混搭双摄需要 PQ bin 策略
-- 浏览器查看 / 本地 AI / 通知仍未实现
-
-## 产品北极星
-
-见：`docs/PRODUCT_FORM3.md`
+- **双摄 RTSP**：`rtsp://192.168.42.1:8554/cam0`（GC2083）+ `cam1`（OV5647）
+- **分辨率档位**：1080p / 720p / 480p
+- **开机自启**：`edgeeye_cam.conf` + `install_autostart.sh`
+- **Web 快照页**：`http://192.168.42.1:8080/`（需板载 ffmpeg）
+- **动检录像**（可选）：`debris.ko` + `motion_recorder` + ffmpeg
 
 ## 目录
 
 ```text
 edgeeye-duos/
-├── Makefile     # make driver | make app | make
-├── config.mk
-├── deploy       # 上传 output/ + scripts/ + stream/
-├── include/     # debris_uapi.h（用户态）
-├── apps/        # motion / stream 脚本 / sync / ai
-├── scripts/     # 板上运行与验收脚本
-├── configs/     # RTSP JSON / sensor ini（权威配置）
-├── board/       # 可选 debris.ko + DTS 片段
-├── docs/
-├── web/
-└── tests/
+├── apps/camera/      edgeeye_cam 源码
+├── apps/motion/      motion_recorder 等
+├── configs/          edgeeye_cam.conf、sensor ini
+├── scripts/          板上运行脚本
+├── tests/camera/     my_cam_test 验收
+├── web/              浏览器快照页
+├── board/driver/     可选 debris.ko
+├── deploy            上传到板子
+└── docs/             部署与硬件说明
 ```
 
 ## 构建与部署
 
-在 Docker 内（先 `source /home/work/init_env.sh`）：
+Docker 内（先 `source /home/work/init_env.sh`）：
 
 ```bash
 cd /home/work/edgeeye-duos
-make              # driver + 用户态 app + 打包 stream 配置
-./deploy          # 上传到 192.168.42.1:/root
+make app && ./deploy
 ```
 
-仅驱动：`make driver`。仅用户态与 stream 包：`make app`。
+仅驱动：`make driver`。全量：`make`。
 
-## 快速开始
+## 板上快速开始
 
-**双摄可用方案（2026-07-01 归档）：** 见 [`docs/CAMERA_BRINGUP_ARCHIVE.md`](docs/CAMERA_BRINGUP_ARCHIVE.md)
+```bash
+# 编辑配置
+vi /root/edgeeye_cam.conf
 
-| 镜头 | URL | 板上脚本 |
-|------|-----|----------|
-| J1 GC2083 | `rtsp://192.168.42.1:554/h264` | `/root/preview_gc2083_554.sh` |
-| J2 OV5647 | `rtsp://192.168.42.1:8554/cam0` | `/root/rtsp_single_ov5647.sh` |
+# 启动完整栈（RTSP + Web + 可选录像）
+./run_edgeeye_stack.sh
 
-注意：**不能同时** 跑两路；切换前先停 `sample_vi` / `rtsp_server`。
+# 开机自启
+./install_autostart.sh && reboot
 
-### 当前主线
+# 健康检查
+./health_check.sh
+```
 
-继续 ISSUE-003 / 修 GC2083 @ `8554`；归档见 `docs/DEBUG_SESSION/DEBUG_SESSION_ISSUE002.md`。
+Mac 预览：
 
-## 先读什么
+```bash
+./scripts/preview_my_cam_rtsp_mac.sh --mode dual --cam both
+# 或
+ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
+```
 
-1. `docs/ONBOARDING.md`
-2. `docs/CAMERA_BRINGUP_ARCHIVE.md` — **双摄当前可用配方**
-3. `docs/PRODUCT_FORM3.md`
-3. `docs/PROJECT_STATUS.md`
-4. `docs/DEBUG_SESSION/INDEX.md`
-5. `docs/CAMERA_VERIFY.md`
+## 文档
+
+| 文档 | 内容 |
+|------|------|
+| [docs/ONBOARDING.md](docs/ONBOARDING.md) | 新手上手 |
+| [docs/HOME_USER_GUIDE.md](docs/HOME_USER_GUIDE.md) | 家用说明 |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 编译部署、ffmpeg |
+| [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | 当前进度 |
+| [docs/HARDWARE_NOTES.md](docs/HARDWARE_NOTES.md) | 板级硬件 |
+| [apps/camera/README.md](apps/camera/README.md) | edgeeye_cam 开发 |
+| [tests/camera/TESTCASES.md](tests/camera/TESTCASES.md) | 验收用例 |
+
+## 测试
+
+```bash
+make test              # 宿主机静态测试
+make test-board        # 板上冒烟（须 deploy）
+./scripts/test_my_cam_test_suite.sh --profile dual-unified -p 5
+```

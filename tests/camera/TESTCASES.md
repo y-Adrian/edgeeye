@@ -21,7 +21,7 @@
 | LT-04 | `test_04_source_layout.sh` | `cam_*` 模块文件存在且列入 `apps/camera/Makefile` |
 | LT-05 | `test_05_deploy_manifest.sh` | `deploy` 包含 phase 2～8 验收脚本 |
 | LT-06 | `test_06_golden_logs.sh` | fixture 日志满足板上验收 grep 模式 |
-| LT-07 | `test_07_stream_configs.sh` | `cam_dual.json` / `cam0.json` 字段与 JSON 合法性 |
+| LT-07 | `test_07_stream_configs.sh` | 混搭双摄 sensor ini 与 `make` 部署包 |
 
 ### 运行
 

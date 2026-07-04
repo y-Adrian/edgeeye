@@ -38,16 +38,16 @@ Sensor control is via I2C (Phase 4). CSI/ISP/VICAP host nodes come from vendor B
 
 ## Dual cameras on board (confirmed 2026-06-05)
 
-Both **J1** and **J2** are populated. Full bring-up checklist: [CAMERA_VERIFY.md](./CAMERA_VERIFY.md).
+Both **J1** and **J2** are populated on the project board.
 
 | CSI | I2C | Addr | Model | `sensor_cfg` on `/mnt/data` |
 |-----|-----|------|-------|-----------------------------|
 | **J2** | i2c-2 | **0x36** | OV5647 (Raspberry Pi module) | `sensor_cfg_OV5647_J2.ini` |
 | **J1** | i2c-3 | **0x37** | GC2083 (Milk-V official) | `sensor_cfg_GC2083.ini` |
 
-Default project scripts (`rtsp_preview_only.sh`, `run_security.sh`) link **`dev_num=1` → J2 OV5647 only**. J1 GC2083 is physically present but not started by RTSP until `sensor_cfg_GC2083.ini` is selected.
+**双摄混搭**（edgeeye_cam `--dual`）：`sensor_cfg_GC2083_OV5647_dual.ini`（`dev_num=2`）。
 
-**RTSP / ISP note:** stock `cvi_sdr_bin` → `cvi_sdr_bin_GC2083` (PQ metadata sensor id **2053**). Works for GC2083 with a warning; **OV5647 needs a separate PQ bin** (sensor id **22087** / `0x5647`) — see [CAMERA_VERIFY.md §3](./CAMERA_VERIFY.md).
+**PQ bin：** pipe0 ← `cvi_sdr_bin_GC2083`；pipe1 ← `cvi_sdr_bin_OV5647.bin`（双摄 per-pipe 加载，见 `cam_isp_tuning.c`）。
 
 ## Camera bring-up (Week 0, on-board scan)
 

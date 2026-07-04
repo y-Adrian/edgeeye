@@ -1,9 +1,0 @@
-{
-    "rtsp-port": 8554,
-    "sensor-config-path": "/mnt/data/sensor_cfg.ini",
-    "video-src-info": [{
-        "rtsp-url": "cam",
-        "codec": "264",
-        "venc-bind-vpss": true
-    }]
-}

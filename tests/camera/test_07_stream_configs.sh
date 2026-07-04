@@ -1,40 +1,25 @@
 #!/bin/sh
-# test_07_stream_configs.sh — stream JSON 与 cam_dual 双摄配置静态校验
+# test_07_sensor_deploy.sh — sensor ini 部署包静态校验
 set -e
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 DIR="$ROOT/tests/camera"
 . "$DIR/lib_assert.sh"
 
-echo "=== test_07_stream_configs ==="
+echo "=== test_07_sensor_deploy ==="
 
-CAM_DUAL="$ROOT/configs/stream/cam_dual.json"
-CAM0="$ROOT/configs/stream/cam0.json"
+DUAL="$ROOT/configs/sensor/sensor_cfg_GC2083_OV5647_dual.ini"
+DEPLOY_INI="$ROOT/output/stream/sensor_cfg_GC2083_OV5647_dual.ini"
 
-assert_file "$CAM_DUAL"
-assert_file "$CAM0"
+assert_file "$DUAL"
+assert_grep_file 'dev_num = 2' "$DUAL"
+assert_grep_file 'GCORE_GC2083' "$DUAL"
+assert_grep_file 'OV_OV5647' "$DUAL"
 
-assert_grep_file '"dev-num": 2' "$CAM_DUAL"
-assert_grep_file '"compress-mode": "tile"' "$CAM_DUAL"
-assert_grep_file '"rtsp-port": 8554' "$CAM_DUAL"
-
-if command -v python3 >/dev/null 2>&1; then
-	TESTS_RUN=$((TESTS_RUN + 1))
-	if python3 -c "import json; json.load(open('$CAM_DUAL'))" 2>/dev/null; then
-		echo "  ok: cam_dual.json valid JSON"
-	else
-		echo "  FAIL: cam_dual.json invalid JSON"
-		TESTS_FAIL=$((TESTS_FAIL + 1))
-	fi
-	TESTS_RUN=$((TESTS_RUN + 1))
-	if python3 -c "import json; json.load(open('$CAM0'))" 2>/dev/null; then
-		echo "  ok: cam0.json valid JSON"
-	else
-		echo "  FAIL: cam0.json invalid JSON"
-		TESTS_FAIL=$((TESTS_FAIL + 1))
-	fi
+if [ -f "$DEPLOY_INI" ]; then
+	assert_grep_file 'dev_num = 2' "$DEPLOY_INI"
 else
-	echo "  skip: python3 not found (JSON parse)"
+	echo "  skip: $DEPLOY_INI (run make app first)"
 fi
 
 test_summary

@@ -10,6 +10,15 @@ echo "=== test_01_script_syntax ==="
 
 for f in \
 	"$ROOT/scripts/my_cam_test_common.sh" \
+	"$ROOT/scripts/edgeeye_cam_common.sh" \
+	"$ROOT/scripts/run_edgeeye_stack.sh" \
+	"$ROOT/scripts/stop_edgeeye_stack.sh" \
+	"$ROOT/scripts/start_my_cam_rtsp.sh" \
+	"$ROOT/scripts/stop_my_cam_rtsp.sh" \
+	"$ROOT/scripts/serve_edgeeye_web.sh" \
+	"$ROOT/scripts/edgeeye_snapshots.sh" \
+	"$ROOT/scripts/health_check.sh" \
+	"$ROOT/scripts/install_autostart.sh" \
 	"$ROOT/scripts/test_my_cam_test.sh" \
 	"$ROOT/scripts/test_my_cam_test_phase.sh" \
 	"$ROOT/scripts/test_my_cam_test_phase3.sh" \
@@ -20,8 +29,6 @@ for f in \
 	"$ROOT/scripts/test_my_cam_test_phase8.sh" \
 	"$ROOT/scripts/test_my_cam_test_dual.sh" \
 	"$ROOT/scripts/test_my_cam_test_suite.sh" \
-	"$ROOT/scripts/start_my_cam_rtsp.sh" \
-	"$ROOT/scripts/stop_my_cam_rtsp.sh" \
 	"$ROOT/scripts/preview_my_cam_rtsp_mac.sh" \
 	"$ROOT/tests/camera/run_local_tests.sh" \
 	"$ROOT/tests/camera/run_board_tests.sh" \

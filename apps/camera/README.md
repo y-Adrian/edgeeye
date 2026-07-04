@@ -81,7 +81,6 @@ reboot
 ```bash
 ./stop_edgeeye_stack.sh
 ./health_check.sh
-./verify_board.sh full
 ```
 
 详见 [`docs/HOME_USER_GUIDE.md`](../../docs/HOME_USER_GUIDE.md)。
