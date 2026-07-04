@@ -100,14 +100,19 @@ tar -tzf duo-sdk/install/.../third_party/ffmpeg.tar.gz | grep '^bin/'
 # → bin/ffprobe  （仅此一个）
 
 # 仅装 ffprobe（改善 health_check RTSP 探测）
-cd Camera && chmod +x scripts/install_ffprobe_board.sh
+cd edgeeye-duos && chmod +x scripts/install_ffprobe_board.sh
 ./scripts/install_ffprobe_board.sh
 
-# 板上本地录像：交叉编译静态 ffmpeg
+# 板上本地录像 / Web 快照：交叉编译静态 ffmpeg（Docker 内）
+source /home/work/init_env.sh
+cd /home/work/edgeeye-duos
 chmod +x scripts/build_ffmpeg_cli.sh scripts/install_ffmpeg_cli_board.sh
 ./scripts/build_ffmpeg_cli.sh          # 约 10–20 分钟
 ./scripts/install_ffmpeg_cli_board.sh
 ```
+
+**编译报错 `rev8` / `.option arch,+zbb`**：Duo S 工具链不支持 RISC-V Zbb 汇编。
+`build_ffmpeg_cli.sh` 已加 `--disable-asm --disable-rvv`；若仍失败，确认在 Docker 内且已 `source init_env.sh`。
 
 ## Test fixes (TC-22)
 

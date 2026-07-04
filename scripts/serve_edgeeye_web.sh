@@ -25,6 +25,11 @@ cat >"$WEB_ROOT/status.json" <<EOF
 EOF
 
 if edgeeye_resolve_ffmpeg >/dev/null 2>&1; then
+	# 重启快照服务以加载新 ffmpeg / 脚本
+	if [ -f /tmp/edgeeye_snapshots.pid ]; then
+		kill "$(cat /tmp/edgeeye_snapshots.pid)" 2>/dev/null || true
+		rm -f /tmp/edgeeye_snapshots.pid
+	fi
 	sh "$DIR/edgeeye_snapshots.sh" 2>/dev/null || true
 else
 	echo "snapshots disabled: no ffmpeg on board"

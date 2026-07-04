@@ -21,17 +21,38 @@ FFMPEG=$(edgeeye_resolve_ffmpeg) || {
 	exit 1
 }
 
+# 清理占用 RTSP 的残留 ffmpeg（旧版脚本易挂死）
+for p in $(ps | grep ffmpeg | grep "127.0.0.1:${EDGEEYE_PORT}" | awk '{print $1}'); do
+	kill "$p" 2>/dev/null || true
+done
+
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
 	echo "edgeeye_snapshots already running"
 	exit 0
 fi
 
+snap_timeout() {
+	if command -v timeout >/dev/null 2>&1; then
+		timeout "$1" "$2" "${@:3}"
+	else
+		"$2" "${@:3}"
+	fi
+}
+
 grab_one() {
 	tag="$1"
 	url="rtsp://127.0.0.1:${EDGEEYE_PORT}/${tag}"
 	out="$SNAP_DIR/${tag}.jpg"
-	"$FFMPEG" -y -loglevel error -rtsp_transport tcp \
-		-i "$url" -frames:v 1 -q:v 5 "$out" 2>/dev/null || true
+	tmp="$SNAP_DIR/.${tag}.jpg.tmp"
+	# 软解 H.264 较慢；缩略图 + 超时，避免阻塞 RTSP
+	if ! snap_timeout 120 "$FFMPEG" -y -loglevel warning -rtsp_transport tcp \
+		-analyzeduration 1000000 -probesize 500000 \
+		-i "$url" -vf scale=640:-1 -frames:v 1 -q:v 8 "$tmp" 2>>"$LOG"; then
+		rm -f "$tmp"
+		return 1
+	fi
+	[ -s "$tmp" ] || { rm -f "$tmp"; return 1; }
+	mv "$tmp" "$out"
 }
 
 (

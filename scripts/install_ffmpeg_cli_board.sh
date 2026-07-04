@@ -7,9 +7,13 @@ set -e
 BOARD_IP="${BOARD_IP:-192.168.42.1}"
 BOARD_USER="${BOARD_USER:-root}"
 FFMPEG="${FFMPEG_BIN:-/tmp/debris_ffmpeg_out/bin/ffmpeg}"
+if [ ! -x "$FFMPEG" ]; then
+	FFMPEG="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)/output/ffmpeg-riscv64-static"
+fi
 
 if [ ! -x "$FFMPEG" ]; then
-    echo "missing $FFMPEG — run build_ffmpeg_cli.sh first"
+    echo "missing ffmpeg — run build_ffmpeg_cli.sh in Docker first"
+    echo "  or set FFMPEG_BIN=/path/to/ffmpeg-riscv64-static"
     exit 1
 fi
 

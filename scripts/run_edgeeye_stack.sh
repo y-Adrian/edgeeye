@@ -24,8 +24,19 @@ if [ ! -x "$BOARD_DIR/edgeeye_cam" ]; then
 	exit 1
 fi
 
-sh "$DIR/start_my_cam_rtsp.sh" "$EDGEEYE_MODE" \
-	--port "$EDGEEYE_PORT" --res "$EDGEEYE_RES" >>"$LOG" 2>&1
+if ! sh "$DIR/start_my_cam_rtsp.sh" "$EDGEEYE_MODE" \
+	--port "$EDGEEYE_PORT" --res "$EDGEEYE_RES" >>"$LOG" 2>&1; then
+	echo "ERROR: edgeeye_cam failed to start" | tee -a "$LOG"
+	if [ "$EDGEEYE_MODE" = "dual" ]; then
+		echo "双摄 VPSS/ION 失败时请先 reboot，再执行: $0" | tee -a "$LOG"
+	fi
+	exit 1
+fi
+
+if ! edgeeye_cam_alive; then
+	echo "ERROR: edgeeye_cam not running (stale pid?)" | tee -a "$LOG"
+	exit 1
+fi
 
 if ! edgeeye_wait_rtsp_ready 90; then
 	echo "WARN: RTSP not confirmed ready" | tee -a "$LOG"
