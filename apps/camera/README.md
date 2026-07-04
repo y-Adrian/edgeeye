@@ -60,6 +60,8 @@ VI/ISP 始终在 sensor 原生 1080p 采集；VPSS 缩放到所选档位后送 V
 
 配置文件模板：`configs/edgeeye_cam.conf` → 部署到 `/root/edgeeye_cam.conf`
 
+开发环境（Docker、`init_env.sh`、deploy）：[`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md)
+
 或通过启动脚本（推荐，含媒体栈清理；无参数时读 `/root/edgeeye_cam.conf`）：
 
 ```bash

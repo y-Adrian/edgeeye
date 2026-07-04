@@ -27,6 +27,8 @@ edgeeye-duos/
 
 ## 构建与部署
 
+完整开发环境（Docker、工具链、Mac/板子连接）见 **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**。
+
 Docker 内（先 `source /home/work/init_env.sh`）：
 
 ```bash
@@ -64,9 +66,10 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 
 | 文档 | 内容 |
 |------|------|
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | **开发环境**（Docker、工具链、部署、Mac 调试） |
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | 新手上手 |
 | [docs/HOME_USER_GUIDE.md](docs/HOME_USER_GUIDE.md) | 家用说明 |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 编译部署、ffmpeg |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 架构、ffmpeg、双摄技巧 |
 | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | 当前进度 |
 | [docs/HARDWARE_NOTES.md](docs/HARDWARE_NOTES.md) | 板级硬件 |
 | [apps/camera/README.md](apps/camera/README.md) | edgeeye_cam 开发 |

@@ -15,11 +15,21 @@
 | 动检录像 | 可选（`record=1`） |
 | 浏览器 RTSP 直播 | 未做（用 ffplay/VLC） |
 
+## 开发环境
+
+**第一次搭环境请读：[DEVELOPMENT.md](./DEVELOPMENT.md)**
+
+要点：
+
+1. Mac 装 Docker + `brew install ffmpeg`
+2. 启动容器并挂载工作区
+3. 容器内 `source /home/work/init_env.sh`
+4. `cd edgeeye-duos && make app && ./deploy`
+
 ## 五分钟上手
 
 ```bash
-# 1. Docker 内编译部署
-source /home/work/init_env.sh
+# 1. Docker 内（已 source init_env.sh）
 cd /home/work/edgeeye-duos && make app && ./deploy
 
 # 2. 板上
@@ -44,6 +54,7 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 
 ## 下一步读什么
 
-1. [HOME_USER_GUIDE.md](./HOME_USER_GUIDE.md) — 家用配置
-2. [DEPLOYMENT.md](./DEPLOYMENT.md) — ffmpeg、自启
-3. [apps/camera/README.md](../apps/camera/README.md) — 开发 edgeeye_cam
+1. [DEVELOPMENT.md](./DEVELOPMENT.md) — 开发环境完整配置
+2. [HOME_USER_GUIDE.md](./HOME_USER_GUIDE.md) — 家用配置
+3. [DEPLOYMENT.md](./DEPLOYMENT.md) — ffmpeg、自启、架构
+4. [apps/camera/README.md](../apps/camera/README.md) — 改 edgeeye_cam 源码
