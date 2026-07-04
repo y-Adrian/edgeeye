@@ -27,12 +27,22 @@ edgeeye-duos/
 
 ## 构建与部署
 
-完整开发环境（Docker、工具链、Mac/板子连接）见 **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**。
+完整开发环境（Docker、SDK 版本、工具链、Mac/板子连接）见 **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**（含 **§0 版本与基线**）。
 
-Docker 内（先 `source /home/work/init_env.sh`）：
+环境基线摘要：
+
+| 项 | 值 |
+|----|-----|
+| 板型 | Milk-V Duo S（SG2000 / C906） |
+| SDK | [duo-buildroot-sdk-v2](https://github.com/milkv-duo/duo-buildroot-sdk-v2)，板型 `milkv-duos-musl-riscv64-sd` |
+| 工具链 | `riscv64-unknown-linux-musl-gcc` 10.2.0 |
+| Docker | `milkvtech/milkv-duo:latest`（`linux/amd64`） |
+
+Docker 内（先 `source scripts/envsetup.sh`，见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)）：
 
 ```bash
-cd /home/work/edgeeye-duos
+cd edgeeye-duos          # 容器内路径取决于挂载，见 DEVELOPMENT.md
+source scripts/envsetup.sh
 make app && ./deploy
 ```
 

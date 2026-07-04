@@ -5,7 +5,6 @@ EDGEEYE_ROOT  := $(abspath $(CAMERA_MK_DIR)/../..)
 
 include $(EDGEEYE_ROOT)/config.mk
 
-DUO_SDK     := $(abspath $(EDGEEYE_ROOT)/../duo-sdk)
 CVI_MPI     := $(DUO_SDK)/cvi_mpi
 RTSP_DIR    := $(DUO_SDK)/sophapp/prebuilt/rtsp/musl_riscv64
 PARAM_FILE  := $(CVI_MPI)/mpi_param.mk
@@ -14,11 +13,11 @@ CAM_DIR     := $(CAMERA_MK_DIR)
 CAM_BUILD   := $(EDGEEYE_ROOT)/build/camera
 
 ifndef CROSS_COMPILE
-$(error CROSS_COMPILE not set — run: source /home/work/init_env.sh)
+$(error CROSS_COMPILE not set — run: source scripts/envsetup.sh)
 endif
 
 ifeq ($(wildcard $(PARAM_FILE)),)
-$(error missing $(PARAM_FILE) — check duo-sdk mount)
+$(error missing $(PARAM_FILE) — set DUO_SDK_ROOT or clone duo-sdk next to edgeeye-duos)
 endif
 
 ifeq ($(wildcard $(BUILD_PATH)/.config),)

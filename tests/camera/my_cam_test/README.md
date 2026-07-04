@@ -13,6 +13,6 @@
 
 ```bash
 # Docker 内
-cd /home/work/edgeeye-duos && make app && ./deploy
+cd edgeeye-duos && source scripts/envsetup.sh && make app && ./deploy
 ssh root@192.168.42.1 '/root/my_cam_test -p 2'
 ```

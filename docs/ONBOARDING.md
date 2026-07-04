@@ -17,20 +17,20 @@
 
 ## 开发环境
 
-**第一次搭环境请读：[DEVELOPMENT.md](./DEVELOPMENT.md)**
+**第一次搭环境请读：[DEVELOPMENT.md](./DEVELOPMENT.md)**（**§0 版本与基线**：SDK commit、板型、工具链、Docker 镜像）
 
 要点：
 
-1. Mac 装 Docker + `brew install ffmpeg`
-2. 启动容器并挂载工作区
-3. 容器内 `source /home/work/init_env.sh`
-4. `cd edgeeye-duos && make app && ./deploy`
+1. Mac 装 Docker + `brew install ffmpeg`；同级准备 `duo-sdk`（`duo-buildroot-sdk-v2`，推荐 `e7fefaa9f`）
+2. 启动容器并挂载工作区（见 DEVELOPMENT.md §4）
+3. 容器内 `cd edgeeye-duos && source scripts/envsetup.sh`
+4. `make app && ./deploy`
 
 ## 五分钟上手
 
 ```bash
-# 1. Docker 内（已 source init_env.sh）
-cd /home/work/edgeeye-duos && make app && ./deploy
+# 1. Docker 内（已 source scripts/envsetup.sh）
+cd edgeeye-duos && source scripts/envsetup.sh && make app && ./deploy
 
 # 2. 板上
 ssh root@192.168.42.1

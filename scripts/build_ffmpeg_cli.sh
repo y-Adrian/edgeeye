@@ -2,8 +2,8 @@
 # build_ffmpeg_cli.sh — 交叉编译静态 ffmpeg（riscv64 musl）供板上 RTSP 录像 / Web 快照
 #
 # 用法（Docker 内，约 10–20 分钟）：
-#   source /home/work/init_env.sh
-#   cd /home/work/edgeeye-duos && ./scripts/build_ffmpeg_cli.sh
+#   cd edgeeye-duos && source scripts/envsetup.sh
+#   ./scripts/build_ffmpeg_cli.sh
 #   ./scripts/install_ffmpeg_cli_board.sh
 #
 # Duo S 工具链（binutils 2.35 / C906）不支持 FFmpeg 6.x 的 RISC-V Zbb 汇编（rev8），
@@ -12,14 +12,16 @@
 # 产出：/tmp/debris_ffmpeg_out/bin/ffmpeg（静态链接）
 set -e
 
-WORK_ROOT="${WORK_ROOT:-/home/work}"
+EDGEEYE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DUO_SDK_ROOT="${DUO_SDK_ROOT:-$(cd "$EDGEEYE_ROOT/../duo-sdk" 2>/dev/null && pwd)}"
+
 FFVER="${FFVER:-6.1.1}"
 SRC="/tmp/ffmpeg-${FFVER}"
 OUT="/tmp/debris_ffmpeg_out"
 TARBALL="/tmp/ffmpeg-${FFVER}.tar.xz"
 URL="https://ffmpeg.org/releases/ffmpeg-${FFVER}.tar.xz"
 
-: "${CROSS_COMPILE:?source init_env.sh first}"
+: "${CROSS_COMPILE:?source scripts/envsetup.sh first}"
 
 CC="${CROSS_COMPILE}gcc"
 AR="${CROSS_COMPILE}ar"

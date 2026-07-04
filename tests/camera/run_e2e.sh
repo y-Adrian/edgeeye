@@ -10,7 +10,7 @@
 # 环境变量：
 #   BOARD_IP=192.168.42.1
 #   DOCKER_IMAGE=milkvtech/milkv-duo:latest
-#   WORK_MOUNT=/path/to/riscv   默认自动探测（含 edgeeye-duos 的父目录）
+#   WORK_MOUNT=/path/to/parent   含 edgeeye-duos 与 duo-sdk 的父目录
 #   MY_CAM_CONTINUE=1           传给板上 suite
 set -e
 
@@ -110,9 +110,9 @@ if [ "$DO_BUILD" = 1 ]; then
 	if command -v docker >/dev/null 2>&1; then
 		echo ">>> docker build (make app)"
 		docker run --rm --platform linux/amd64 \
-			-v "$WORK_MOUNT:/home/work" \
+			-v "$WORK_MOUNT:/work" \
 			"$DOCKER_IMAGE" \
-			bash -lc 'source /home/work/init_env.sh && cd /home/work/edgeeye-duos && make app'
+			bash -lc 'cd /work/edgeeye-duos && source scripts/envsetup.sh && make app'
 	else
 		echo ">>> local make app"
 		if ! command -v riscv64-unknown-linux-musl-gcc >/dev/null 2>&1; then

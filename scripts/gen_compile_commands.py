@@ -19,19 +19,31 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RISCV_ROOT = os.path.dirname(REPO)
-DOCKER_WORK = "/home/work"
-KDIR_DOCKER = (
-    "/home/work/duo-sdk/linux_5.10/build/sg2000_milkv_duos_musl_riscv64_sd"
+DUO_SDK = os.environ.get(
+    "DUO_SDK_ROOT",
+    os.path.join(os.path.dirname(REPO), "duo-sdk"),
 )
-DUO_SDK = os.path.join(RISCV_ROOT, "duo-sdk")
+KDIR_HOST = os.path.join(
+    DUO_SDK,
+    "linux_5.10/build/sg2000_milkv_duos_musl_riscv64_sd",
+)
+# Docker 内常见挂载前缀（解析 kbuild .cmd 里的路径）
+DOCKER_MOUNTS = ("/home/work", "/work")
 CVI_MPI = os.path.join(DUO_SDK, "cvi_mpi")
 BUILD_CONFIG = os.path.join(DUO_SDK, "build", ".config")
 
 
 def map_path(path: str) -> str:
-    if path.startswith(DOCKER_WORK):
-        return RISCV_ROOT + path[len(DOCKER_WORK) :]
+    """Docker 挂载前缀 → 本机 REPO / duo-sdk 路径。"""
+    for prefix in DOCKER_MOUNTS:
+        if not path.startswith(prefix):
+            continue
+        suffix = path[len(prefix) :]
+        if suffix.startswith("/edgeeye-duos"):
+            return REPO + suffix[len("/edgeeye-duos") :]
+        if suffix.startswith("/duo-sdk"):
+            return DUO_SDK + suffix[len("/duo-sdk") :]
+        return os.path.dirname(REPO) + suffix
     return path
 
 
@@ -46,7 +58,7 @@ def parse_kbuild_driver() -> list[dict]:
         )
         return []
 
-    kdir_host = map_path(KDIR_DOCKER)
+    kdir_host = KDIR_HOST
     entries: list[dict] = []
 
     for cmdfile in sorted(cmd_files):
@@ -56,7 +68,8 @@ def parse_kbuild_driver() -> list[dict]:
         if not m:
             continue
         cmd = map_path(m.group(2))
-        cmd = cmd.replace(DOCKER_WORK, RISCV_ROOT)
+        for prefix in DOCKER_MOUNTS:
+            cmd = cmd.replace(prefix, os.path.dirname(REPO))
         src_m = re.search(r" -c -o \S+ (\S+\.c)$", cmd)
         if not src_m:
             continue

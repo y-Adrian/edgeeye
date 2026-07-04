@@ -6,8 +6,8 @@
 
 ```bash
 # Docker 内
-source /home/work/init_env.sh
-cd /home/work/edgeeye-duos && make app && ./deploy
+cd edgeeye-duos && source scripts/envsetup.sh
+make app && ./deploy
 
 ssh root@192.168.42.1
 chmod +x /root/*.sh
@@ -57,8 +57,7 @@ Mac 一键：`./scripts/preview_my_cam_rtsp_mac.sh --mode dual --cam both --star
 Stock rootfs has no `ffmpeg` CLI. Cross-compile in Docker:
 
 ```bash
-source /home/work/init_env.sh
-cd /home/work/edgeeye-duos
+source scripts/envsetup.sh
 ./scripts/build_ffmpeg_cli.sh          # 约 10–20 分钟
 ./scripts/install_ffmpeg_cli_board.sh
 ```

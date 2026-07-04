@@ -13,14 +13,16 @@
 
 set -euo pipefail
 
-WORK_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-SDK_OUT="${WORK_ROOT}/duo-sdk/install/soc_sg2000_milkv_duos_musl_riscv64_sd"
+EDGEEYE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DUO_SDK_ROOT="${DUO_SDK_ROOT:-$(cd "$EDGEEYE_ROOT/../duo-sdk" 2>/dev/null && pwd)}"
+SDK_OUT="${DUO_SDK_ROOT}/install/soc_sg2000_milkv_duos_musl_riscv64_sd"
 SRC_BOOT="${SDK_OUT}/rawimages/boot.sd"
 SRC_FIP="${SDK_OUT}/fip.bin"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
-[ -f "$SRC_BOOT" ] || die "missing $SRC_BOOT — run: source init_env.sh && pack_boot"
+[ -d "$DUO_SDK_ROOT" ] || die "missing duo-sdk — set DUO_SDK_ROOT or clone next to edgeeye-duos"
+[ -f "$SRC_BOOT" ] || die "missing $SRC_BOOT — in SDK: source scripts/envsetup from edgeeye-duos, then pack_boot"
 
 # FIT magic (boot.itb), not CIMG
 MAGIC=$(dd if="$SRC_BOOT" bs=4 count=1 2>/dev/null | xxd -p)

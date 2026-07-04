@@ -1,21 +1,30 @@
-# board/ — 产品运行所需的板级支持
-
-本目录**不是**驱动学习主线；完整 `debris.ko` 学习与测试见独立仓库 `debris-ko-learning/`。
+# board/ — 板级支持
 
 | 子目录 | 用途 |
 |--------|------|
-| `driver/` | 产品侧可选的 `debris.ko` 副本（事件层 / GPIO 运动等） |
+| `driver/` | 可选 `debris.ko`（GPIO 动检事件等，`make driver`） |
 | `dts/` | `debris-camera-engine.dtsi`，与 SDK 板级 DTS 合并 |
 
-构建与烧录：
+## 构建
 
 ```bash
-# Docker 内
-source /home/work/init_env.sh
-cd /home/work/edgeeye-duos
-make driver          # 仅 debris.ko → output/
+cd edgeeye-duos
+source scripts/envsetup.sh
+make driver          # → output/debris.ko
 ```
 
-DTS 工作流与 `debris-ko-learning` 相同，见 `docs/DEPLOYMENT.md` 与 `debris-ko-learning/docs/DTS_WORKFLOW.md`。
+开发环境见 [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md)。
 
-用户态 ioctl 定义在仓库根目录 `include/debris_uapi.h`。
+## DTS
+
+`dts/debris-camera-engine.dtsi` 定义 `debris-camera` platform 节点。合并进 Milk-V 板级 DTS 后需重新 `pack_boot` 并更新 SD 卡 `boot.sd`（脚本 `scripts/update_boot_sd.sh`）。
+
+板上验证：
+
+```bash
+cat /proc/device-tree/debris-camera/compatible
+insmod debris.ko register_fallback_pdev=0
+cat /proc/debris    # dt_bound=1
+```
+
+用户态 ioctl 定义：`include/debris_uapi.h`。

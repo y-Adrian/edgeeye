@@ -25,8 +25,8 @@
 ## 构建
 
 ```bash
-source /home/work/init_env.sh
-cd /home/work/edgeeye-duos
+cd edgeeye-duos
+source scripts/envsetup.sh
 make app    # → output/edgeeye_cam + output/my_cam_test
 ./deploy
 ```
@@ -60,7 +60,7 @@ VI/ISP 始终在 sensor 原生 1080p 采集；VPSS 缩放到所选档位后送 V
 
 配置文件模板：`configs/edgeeye_cam.conf` → 部署到 `/root/edgeeye_cam.conf`
 
-开发环境（Docker、`init_env.sh`、deploy）：[`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md)
+开发环境（Docker、`scripts/envsetup.sh`、deploy）：[`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md)
 
 或通过启动脚本（推荐，含媒体栈清理；无参数时读 `/root/edgeeye_cam.conf`）：
 
@@ -104,7 +104,7 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam1   # dual only
 
 ## 测试
 
-验收程序仍在 [`tests/camera/my_cam_test/`](../../tests/camera/my_cam_test/)，详见 [`tests/camera/TESTCASES.md`](../../tests/camera/TESTCASES.md)。
+验收程序在 [`tests/camera/my_cam_test/`](../../tests/camera/my_cam_test/)，详见 [`tests/camera/TESTCASES.md`](../../tests/camera/TESTCASES.md)。
 
 ```bash
 make test          # 宿主机静态检查
