@@ -16,11 +16,13 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam1
 ```
 
-浏览器快照页（约 3 秒刷新）：
+浏览器快照页（约 3 秒刷新，需板载 ffmpeg + python3）：
 
 ```text
 http://192.168.42.1:8080/
 ```
+
+注意：须用 **http://**，不是 https。Duo S 的 busybox 无 httpd，Web 由 **python3 -m http.server** 提供。
 
 ## 配置文件
 

@@ -133,7 +133,7 @@ edgeeye_start_recording() {
 	if ! edgeeye_resolve_ffmpeg >/dev/null; then
 		echo "skip record: no ffmpeg on board" >>"$log"
 		return 0
-	}
+	fi
 
 	if ! lsmod | grep -q '^debris '; then
 		if [ -f "$BOARD_DIR/debris.ko" ]; then
@@ -179,5 +179,6 @@ edgeeye_stop_web() {
 		kill "$(cat /tmp/edgeeye_web.pid)" 2>/dev/null || true
 		rm -f /tmp/edgeeye_web.pid
 	fi
+	pkill -f "python3 -m http.server ${EDGEEYE_WEB_PORT:-8080}" 2>/dev/null || true
 	pkill -f "busybox httpd.*${EDGEEYE_WEB_PORT:-8080}" 2>/dev/null || true
 }

@@ -162,5 +162,15 @@ if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
     echo "       thermal_zone0: $t m°C"
 fi
 
+WEB_PORT="${EDGEEYE_WEB_PORT:-8080}"
+if [ "${EDGEEYE_WEB:-0}" = "1" ]; then
+    if netstat -ln 2>/dev/null | grep -q ":$WEB_PORT " || \
+       ss -ln 2>/dev/null | grep -q ":$WEB_PORT"; then
+        check "Web UI port $WEB_PORT listening" 1
+    else
+        check "Web UI port $WEB_PORT listening" 0
+    fi
+fi
+
 echo "=== done (warn=$WARN) ==="
 exit "$WARN"

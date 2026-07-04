@@ -1,5 +1,5 @@
 #!/bin/sh
-# serve_edgeeye_web.sh — busybox httpd 提供 Web 状态页 + JPEG 快照
+# serve_edgeeye_web.sh — Web 状态页 + JPEG 快照（Duo S 无 busybox httpd，用 python3）
 set -e
 
 BOARD_DIR=/root
@@ -19,7 +19,6 @@ fi
 
 mkdir -p "$WEB_ROOT/snapshots"
 
-# 写入运行时信息供 index.html 读取
 IP=$(edgeeye_board_ip)
 cat >"$WEB_ROOT/status.json" <<EOF
 {"mode":"$EDGEEYE_MODE","port":$EDGEEYE_PORT,"res":"$EDGEEYE_RES","ip":"$IP","dual":$([ "$EDGEEYE_MODE" = dual ] && echo true || echo false)}
@@ -27,27 +26,41 @@ EOF
 
 if edgeeye_resolve_ffmpeg >/dev/null 2>&1; then
 	sh "$DIR/edgeeye_snapshots.sh" 2>/dev/null || true
+else
+	echo "snapshots disabled: no ffmpeg on board"
 fi
 
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-	echo "edgeeye web already on :$PORT"
-	exit 0
+	if netstat -ln 2>/dev/null | grep -q ":$PORT " || \
+	   ss -ln 2>/dev/null | grep -q ":$PORT"; then
+		echo "edgeeye web already on :$PORT (pid $(cat "$PIDFILE"))"
+		exit 0
+	fi
 fi
 
-HTTPD=""
-for c in busybox httpd /usr/sbin/httpd; do
-	if command -v busybox >/dev/null 2>&1; then
-		HTTPD="busybox httpd"
-		break
-	fi
-done
+edgeeye_stop_web
 
-if [ -z "$HTTPD" ]; then
-	echo "no httpd (busybox) on board"
+if ! command -v python3 >/dev/null 2>&1; then
+	echo "python3 required (busybox httpd not on Duo S)"
 	exit 1
 fi
 
-# shellcheck disable=SC2086
-nohup $HTTPD -f -p "$PORT" -h "$WEB_ROOT" >>/tmp/edgeeye_web.log 2>&1 &
+: > /tmp/edgeeye_web.log
+cd "$WEB_ROOT"
+nohup python3 -m http.server "$PORT" --bind 0.0.0.0 >>/tmp/edgeeye_web.log 2>&1 &
 echo $! >"$PIDFILE"
+sleep 2
+
+if ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+	echo "python http.server exited — see /tmp/edgeeye_web.log"
+	tail -5 /tmp/edgeeye_web.log 2>/dev/null
+	exit 1
+fi
+
+if ! netstat -ln 2>/dev/null | grep -q ":$PORT " && \
+   ! ss -ln 2>/dev/null | grep -q ":$PORT"; then
+	echo "port $PORT not listening"
+	exit 1
+fi
+
 echo "edgeeye web http://$IP:$PORT/ (pid $(cat "$PIDFILE"))"
