@@ -11,9 +11,14 @@ edgeeye_cfg_default() {
 	EDGEEYE_RECORD="${EDGEEYE_RECORD:-0}"
 	EDGEEYE_CLIP_SEC="${EDGEEYE_CLIP_SEC:-30}"
 	EDGEEYE_COOLDOWN_SEC="${EDGEEYE_COOLDOWN_SEC:-15}"
-	EDGEEYE_WEB="${EDGEEYE_WEB:-1}"
+	EDGEEYE_MOTION_SOURCE="${EDGEEYE_MOTION_SOURCE:-rtsp}"
+	EDGEEYE_MOTION_THRESHOLD="${EDGEEYE_MOTION_THRESHOLD:-3000}"
+	EDGEEYE_MOTION_INTERVAL_SEC="${EDGEEYE_MOTION_INTERVAL_SEC:-2}"
+	EDGEEYE_CLIP_DIR="${EDGEEYE_CLIP_DIR:-}"
+	EDGEEYE_WEB="${EDGEEYE_WEB:-0}"
 	EDGEEYE_WEB_PORT="${EDGEEYE_WEB_PORT:-8080}"
 	EDGEEYE_SNAPSHOT_SEC="${EDGEEYE_SNAPSHOT_SEC:-3}"
+	EDGEEYE_AUTOSTART="${EDGEEYE_AUTOSTART:-0}"
 }
 
 edgeeye_cfg_set_key() {
@@ -38,9 +43,19 @@ edgeeye_cfg_set_key() {
 	record) EDGEEYE_RECORD="$val" ;;
 	clip_sec) EDGEEYE_CLIP_SEC="$val" ;;
 	cooldown_sec) EDGEEYE_COOLDOWN_SEC="$val" ;;
+	motion_source)
+		case "$val" in
+		rtsp|debris|gpio|auto) EDGEEYE_MOTION_SOURCE="$val" ;;
+		*) echo "edgeeye_cam.conf: unknown motion_source=$val" >&2 ;;
+		esac
+		;;
+	motion_threshold) EDGEEYE_MOTION_THRESHOLD="$val" ;;
+	motion_interval_sec) EDGEEYE_MOTION_INTERVAL_SEC="$val" ;;
+	clip_dir) EDGEEYE_CLIP_DIR="$val" ;;
 	web) EDGEEYE_WEB="$val" ;;
 	web_port) EDGEEYE_WEB_PORT="$val" ;;
 	snapshot_sec) EDGEEYE_SNAPSHOT_SEC="$val" ;;
+	autostart) EDGEEYE_AUTOSTART="$val" ;;
 	esac
 }
 
@@ -122,6 +137,18 @@ edgeeye_wait_rtsp_ready() {
 	return 1
 }
 
+edgeeye_clip_dir() {
+	if [ -n "$EDGEEYE_CLIP_DIR" ]; then
+		printf '%s' "$EDGEEYE_CLIP_DIR"
+		return 0
+	fi
+	if [ -d /mnt/sd ] && [ -w /mnt/sd ]; then
+		printf '%s' "/mnt/sd/clips"
+	else
+		printf '%s' "/mnt/data/clips"
+	fi
+}
+
 edgeeye_start_recording() {
 	log="${1:-/tmp/edgeeye_stack.log}"
 
@@ -135,12 +162,20 @@ edgeeye_start_recording() {
 		return 0
 	fi
 
-	if ! lsmod | grep -q '^debris '; then
-		if [ -f "$BOARD_DIR/debris.ko" ]; then
-			insmod "$BOARD_DIR/debris.ko" register_fallback_pdev=0 i2c_sensor_mode=0 \
-				>>"$log" 2>&1 || true
-		fi
+	if ! edgeeye_wait_rtsp_ready 120; then
+		echo "WARN record: RTSP not ready, starting motion_recorder anyway" >>"$log"
 	fi
+
+	case "$EDGEEYE_MOTION_SOURCE" in
+	debris|gpio)
+		if ! lsmod | grep -q '^debris '; then
+			if [ -f "$BOARD_DIR/debris.ko" ]; then
+				insmod "$BOARD_DIR/debris.ko" register_fallback_pdev=0 i2c_sensor_mode=0 \
+					gpio_btn=500 >>"$log" 2>&1 || true
+			fi
+		fi
+		;;
+	esac
 
 	export RTSP_URL="rtsp://127.0.0.1:${EDGEEYE_PORT}/cam0"
 	if [ "$EDGEEYE_MODE" = "dual" ]; then
@@ -148,9 +183,16 @@ edgeeye_start_recording() {
 	else
 		unset RTSP_URL2
 	fi
+	export MOTION_SOURCE="$EDGEEYE_MOTION_SOURCE"
+	export MOTION_THRESHOLD="$EDGEEYE_MOTION_THRESHOLD"
+	export MOTION_INTERVAL_SEC="$EDGEEYE_MOTION_INTERVAL_SEC"
+	CLIP_DIR=$(edgeeye_clip_dir)
+	export CLIP_DIR
 	export FFMPEG
 	FFMPEG=$(edgeeye_resolve_ffmpeg) || true
 	export FFMPEG
+
+	mkdir -p "$CLIP_DIR" 2>/dev/null || true
 
 	if [ -f /tmp/motion_recorder.pid ] && kill -0 "$(cat /tmp/motion_recorder.pid)" 2>/dev/null; then
 		echo "motion_recorder already running" >>"$log"
@@ -160,7 +202,7 @@ edgeeye_start_recording() {
 	nohup "$BOARD_DIR/motion_recorder" "$EDGEEYE_CLIP_SEC" "$EDGEEYE_COOLDOWN_SEC" \
 		>>"$log" 2>&1 &
 	echo $! > /tmp/motion_recorder.pid
-	echo "motion_recorder pid $(cat /tmp/motion_recorder.pid)" >>"$log"
+	echo "motion_recorder pid $(cat /tmp/motion_recorder.pid) source=$EDGEEYE_MOTION_SOURCE dir=$CLIP_DIR" >>"$log"
 }
 
 edgeeye_stop_recording() {
@@ -181,4 +223,68 @@ edgeeye_stop_web() {
 	fi
 	pkill -f "python3 -m http.server ${EDGEEYE_WEB_PORT:-8080}" 2>/dev/null || true
 	pkill -f "busybox httpd.*${EDGEEYE_WEB_PORT:-8080}" 2>/dev/null || true
+}
+
+EDGEEYE_INIT_SCRIPT="/etc/init.d/S99edgeeye_cam"
+
+edgeeye_autostart_install() {
+	if [ ! -x "$BOARD_DIR/run_edgeeye_stack.sh" ]; then
+		echo "missing $BOARD_DIR/run_edgeeye_stack.sh — deploy scripts first" >&2
+		return 1
+	fi
+
+	cat >"$EDGEEYE_INIT_SCRIPT" <<'EOF'
+#!/bin/sh
+case "$1" in
+    start)
+        /root/run_edgeeye_stack.sh &
+        ;;
+    stop)
+        if [ -x /root/stop_edgeeye_stack.sh ]; then
+            /root/stop_edgeeye_stack.sh
+        fi
+        ;;
+    restart)
+        $0 stop
+        sleep 2
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+EOF
+	chmod +x "$EDGEEYE_INIT_SCRIPT"
+	echo "autostart enabled: $EDGEEYE_INIT_SCRIPT"
+	return 0
+}
+
+edgeeye_autostart_remove() {
+	if [ -f "$EDGEEYE_INIT_SCRIPT" ]; then
+		rm -f "$EDGEEYE_INIT_SCRIPT"
+		echo "autostart disabled: removed $EDGEEYE_INIT_SCRIPT"
+	else
+		echo "autostart already off (no init script)"
+	fi
+}
+
+# 按 edgeeye_cam.conf 的 autostart=0|1 安装或移除 init.d
+edgeeye_apply_autostart() {
+	edgeeye_load_config
+	if [ "$EDGEEYE_AUTOSTART" = "1" ]; then
+		edgeeye_autostart_install
+	else
+		edgeeye_autostart_remove
+	fi
+}
+
+edgeeye_autostart_status() {
+	edgeeye_load_config
+	echo "config $EDGEEYE_CONF: autostart=$EDGEEYE_AUTOSTART web=$EDGEEYE_WEB record=$EDGEEYE_RECORD"
+	if [ -f "$EDGEEYE_INIT_SCRIPT" ]; then
+		echo "init.d: installed ($EDGEEYE_INIT_SCRIPT)"
+	else
+		echo "init.d: not installed"
+	fi
 }

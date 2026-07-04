@@ -47,6 +47,8 @@ edgeeye_start_recording "$LOG"
 if [ "$EDGEEYE_WEB" = "1" ] && [ -x "$DIR/serve_edgeeye_web.sh" ]; then
 	sh "$DIR/serve_edgeeye_web.sh" >>"$LOG" 2>&1 || \
 		echo "WARN: web serve failed" | tee -a "$LOG"
+else
+	echo "web disabled (web=$EDGEEYE_WEB)" | tee -a "$LOG"
 fi
 
-echo "stack ready port=$EDGEEYE_PORT web=${EDGEEYE_WEB_PORT:-8080}" | tee -a "$LOG"
+echo "stack ready port=$EDGEEYE_PORT web=${EDGEEYE_WEB:-0}:${EDGEEYE_WEB_PORT:-8080} record=${EDGEEYE_RECORD:-0}" | tee -a "$LOG"

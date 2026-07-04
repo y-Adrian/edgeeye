@@ -16,7 +16,7 @@ http://192.168.42.1:8080/
 `/root/edgeeye_cam.conf`：
 
 ```ini
-web=1
+web=0              # 0=关  1=开浏览器快照页
 web_port=8080
 snapshot_sec=3
 ```

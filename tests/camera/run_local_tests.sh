@@ -38,7 +38,8 @@ for t in \
 	"$DIR/test_05_deploy_manifest.sh" \
 	"$DIR/test_06_golden_logs.sh" \
 	"$DIR/test_07_stream_configs.sh" \
-	"$DIR/test_08_suite_profiles.sh"
+	"$DIR/test_08_suite_profiles.sh" \
+	"$DIR/test_09_motion_record_config.sh"
 do
 	run_one "$t"
 done
