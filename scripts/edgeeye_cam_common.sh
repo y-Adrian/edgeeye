@@ -18,6 +18,7 @@ edgeeye_cfg_default() {
 	EDGEEYE_CLIP_DIR="${EDGEEYE_CLIP_DIR:-}"
 	EDGEEYE_WEB="${EDGEEYE_WEB:-0}"
 	EDGEEYE_WEB_PORT="${EDGEEYE_WEB_PORT:-8080}"
+	EDGEEYE_WEB_LIVE="${EDGEEYE_WEB_LIVE:-hls}"
 	EDGEEYE_SNAPSHOT_SEC="${EDGEEYE_SNAPSHOT_SEC:-3}"
 	EDGEEYE_AUTOSTART="${EDGEEYE_AUTOSTART:-0}"
 }
@@ -61,6 +62,12 @@ edgeeye_cfg_set_key() {
 	clip_dir) EDGEEYE_CLIP_DIR="$val" ;;
 	web) EDGEEYE_WEB="$val" ;;
 	web_port) EDGEEYE_WEB_PORT="$val" ;;
+	web_live)
+		case "$val" in
+		hls|snapshot) EDGEEYE_WEB_LIVE="$val" ;;
+		*) echo "edgeeye_cam.conf: unknown web_live=$val (use hls|snapshot)" >&2 ;;
+		esac
+		;;
 	snapshot_sec) EDGEEYE_SNAPSHOT_SEC="$val" ;;
 	autostart) EDGEEYE_AUTOSTART="$val" ;;
 	esac
@@ -256,7 +263,20 @@ edgeeye_stop_recording() {
 	fi
 }
 
+edgeeye_stop_hls() {
+	for tag in cam0 cam1; do
+		pf="/tmp/edgeeye_hls_${tag}.pid"
+		if [ -f "$pf" ]; then
+			kill "$(cat "$pf")" 2>/dev/null || true
+			rm -f "$pf"
+		fi
+	done
+	# 兜底：残留 remux 进程
+	pkill -f "ffmpeg.*web/hls/" 2>/dev/null || true
+}
+
 edgeeye_stop_web() {
+	edgeeye_stop_hls
 	if [ -f /tmp/edgeeye_snapshots.pid ]; then
 		kill "$(cat /tmp/edgeeye_snapshots.pid)" 2>/dev/null || true
 		rm -f /tmp/edgeeye_snapshots.pid
@@ -267,6 +287,7 @@ edgeeye_stop_web() {
 	fi
 	pkill -f "python3 -m http.server ${EDGEEYE_WEB_PORT:-8080}" 2>/dev/null || true
 	pkill -f "busybox httpd.*${EDGEEYE_WEB_PORT:-8080}" 2>/dev/null || true
+	pkill -f "edgeeye_http_server.py" 2>/dev/null || true
 }
 
 EDGEEYE_INIT_SCRIPT="/etc/init.d/S99edgeeye_cam"

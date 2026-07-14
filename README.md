@@ -1,14 +1,14 @@
 # EdgeEye Duo S
 
-Milk-V Duo S 边缘双摄 RTSP 产品：`edgeeye_cam` 单摄/双摄直播，可选 Web 快照页与动检录像。
+Milk-V Duo S 边缘双摄 RTSP 产品：`edgeeye_cam` 单摄/双摄直播，可选浏览器 HLS / 快照页与动检录像。
 
 ## 能力
 
 - **双摄 RTSP**：`rtsp://192.168.42.1:8554/cam0`（GC2083）+ `cam1`（OV5647）
 - **分辨率档位**：1080p / 720p / 480p
 - **开机自启**：`edgeeye_cam.conf` + `install_autostart.sh`
-- **Web 快照页**：`http://192.168.42.1:8080/`（需板载 ffmpeg）
-- **动检录像**（可选）：`record=1` + 板载 ffmpeg，默认 RTSP 画面差分；GPIO/PIR 可用 `motion_source=debris`
+- **浏览器双路直播**：`web=1` + `web_live=hls` → `http://192.168.42.1:8080/`（ffmpeg remux；可选 `snapshot`）
+- **动检录像**（可选）：`record=1`，默认只探/录 cam0；GPIO/PIR 可用 `motion_source=debris`
 
 ## 目录
 
@@ -19,7 +19,7 @@ edgeeye-duos/
 ├── configs/          edgeeye_cam.conf、sensor ini
 ├── scripts/          板上运行脚本
 ├── tests/camera/     my_cam_test 验收
-├── web/              浏览器快照页
+├── web/              浏览器 HLS / 快照页（含 vendor/hls.min.js）
 ├── board/driver/     可选 debris.ko
 ├── deploy            上传到板子
 └── docs/             部署与硬件说明
@@ -61,8 +61,9 @@ vi /root/edgeeye_cam.conf
 | 想要 | conf 设置 |
 |------|-----------|
 | 仅 RTSP | `web=0 record=0 autostart=0`，手动 `./run_edgeeye_stack.sh` |
-| + Web 快照 | `web=1`，重启栈 |
-| + 动检录像 | `record=1`，重启栈 |
+| + 浏览器双路 HLS | `web=1` `web_live=hls` `record=0`，重启栈 |
+| + JPEG 慢刷 | `web=1` `web_live=snapshot`，重启栈 |
+| + 动检录像 | `record=1`（默认 cam0），重启栈；勿与 HLS 同时大开 |
 | 上电自启 | `autostart=1`，`./install_autostart.sh` |
 
 Mac 预览：

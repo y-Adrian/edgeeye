@@ -16,6 +16,8 @@ for s in \
 	stop_edgeeye_stack.sh \
 	edgeeye_cam_common.sh \
 	serve_edgeeye_web.sh \
+	edgeeye_hls.sh \
+	edgeeye_http_server.py \
 	edgeeye_snapshots.sh \
 	health_check.sh \
 	install_autostart.sh \

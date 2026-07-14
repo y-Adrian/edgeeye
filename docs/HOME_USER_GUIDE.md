@@ -16,26 +16,31 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam1
 ```
 
-浏览器快照页（`web=1` 时，约 3 秒刷新，需板载 ffmpeg + python3）：
+浏览器页（`web=1`，需板载 ffmpeg + python3）：
 
 ```text
 http://192.168.42.1:8080/
 ```
 
-默认 **web=0** 关闭；在 `edgeeye_cam.conf` 设 `web=1` 并重启栈后开启。
+- 默认 `web_live=hls`：**双路 HLS 直播**（延迟约数秒）
+- `web_live=snapshot`：JPEG 约 3 秒刷新（旧模式）
 
-注意：须用 **http://**，不是 https。Duo S 的 busybox 无 httpd，Web 由 **python3 -m http.server** 提供。
+默认 **web=0** 关闭；设 `web=1` 并重启栈后开启。开 HLS 时建议 `record=0`，避免与动检抢 RTSP。
+
+注意：须用 **http://**，不是 https。
 
 ## 功能开关
 
-所有可选功能在 **`/root/edgeeye_cam.conf`** 里用 `0` / `1` 控制：
+所有可选功能在 **`/root/edgeeye_cam.conf`** 里控制：
 
 | 配置项 | 含义 | 生效方式 |
 |--------|------|----------|
-| `web=0` | 关闭浏览器快照页（默认关） | 重启栈 |
+| `web=0` | 关闭浏览器页（默认关） | 重启栈 |
 | `web=1` | 开启 `http://192.168.42.1:8080/` | 重启栈 |
+| `web_live=hls` | 双路 HLS 直播（默认） | 重启栈 |
+| `web_live=snapshot` | JPEG 慢刷 | 重启栈 |
 | `record=0` | 关闭动检录像（默认关） | 重启栈 |
-| `record=1` | 开启动检录像 | 重启栈 |
+| `record=1` | 开启动检录像（仅 cam0） | 重启栈 |
 | `autostart=0` | 不开机自启（默认关） | `./install_autostart.sh` |
 | `autostart=1` | 上电自动跑 RTSP 栈 | `./install_autostart.sh` |
 

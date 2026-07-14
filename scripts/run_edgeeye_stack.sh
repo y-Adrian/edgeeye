@@ -12,7 +12,7 @@ DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 . "$DIR/edgeeye_cam_common.sh"
 edgeeye_load_config
 
-echo "=== run_edgeeye_stack $(date) mode=$EDGEEYE_MODE record=$EDGEEYE_RECORD web=$EDGEEYE_WEB ===" | tee "$LOG"
+echo "=== run_edgeeye_stack $(date) mode=$EDGEEYE_MODE record=$EDGEEYE_RECORD web=$EDGEEYE_WEB live=${EDGEEYE_WEB_LIVE:-hls} ===" | tee "$LOG"
 
 if [ -n "$EDGEEYE_BOOT_DELAY" ] && [ "$EDGEEYE_BOOT_DELAY" -gt 0 ] 2>/dev/null; then
 	echo "boot_delay ${EDGEEYE_BOOT_DELAY}s..." | tee -a "$LOG"
@@ -51,4 +51,4 @@ else
 	echo "web disabled (web=$EDGEEYE_WEB)" | tee -a "$LOG"
 fi
 
-echo "stack ready port=$EDGEEYE_PORT web=${EDGEEYE_WEB:-0}:${EDGEEYE_WEB_PORT:-8080} record=${EDGEEYE_RECORD:-0}" | tee -a "$LOG"
+echo "stack ready port=$EDGEEYE_PORT web=${EDGEEYE_WEB:-0}:${EDGEEYE_WEB_PORT:-8080}/${EDGEEYE_WEB_LIVE:-hls} record=${EDGEEYE_RECORD:-0}" | tee -a "$LOG"

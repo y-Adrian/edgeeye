@@ -26,6 +26,7 @@ scp $FILES "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
 for s in \
 	run_edgeeye_cam.sh run_edgeeye_stack.sh stop_edgeeye_stack.sh \
 	edgeeye_cam_common.sh edgeeye_snapshots.sh serve_edgeeye_web.sh \
+	edgeeye_hls.sh edgeeye_http_server.py \
 	install_autostart.sh health_check.sh stability_6h.sh \
 	start_my_cam_rtsp.sh stop_my_cam_rtsp.sh preview_my_cam_rtsp_mac.sh \
 	my_cam_test_common.sh record_clip.sh media_tools.sh stop_motion_recorder.sh \

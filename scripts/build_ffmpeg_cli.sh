@@ -1,5 +1,6 @@
 #!/bin/sh
-# build_ffmpeg_cli.sh — 交叉编译静态 ffmpeg（riscv64 musl）供板上 RTSP 录像 / Web 快照
+# build_ffmpeg_cli.sh — 交叉编译静态 ffmpeg（riscv64 musl）
+# 用途：RTSP 录像 / 动检 JPEG / Web 快照 / HLS remux（-c copy）
 #
 # 用法（Docker 内，约 10–20 分钟）：
 #   cd edgeeye-duos && source scripts/envsetup.sh
@@ -10,6 +11,7 @@
 # 须 --disable-asm --disable-rvv（与 duo-sdk buildroot ffmpeg.mk 一致）。
 #
 # 产出：/tmp/debris_ffmpeg_out/bin/ffmpeg（静态链接）
+# 板端自检 HLS：/mnt/data/bin/ffmpeg -muxers | grep hls
 set -e
 
 EDGEEYE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -68,9 +70,12 @@ cd "$SRC"
     --enable-muxer=mp4 \
     --enable-muxer=mov \
     --enable-muxer=image2 \
+    --enable-muxer=hls \
+    --enable-muxer=mpegts \
     --enable-parser=h264 \
     --enable-decoder=h264 \
     --enable-encoder=mjpeg \
+    --enable-bsf=h264_mp4toannexb \
     --enable-filter=scale \
     --enable-filter=format \
     --extra-cflags="-Os -march=rv64imafdc -mabi=lp64d" \
