@@ -40,4 +40,7 @@ do
 	assert_file "$ROOT/scripts/$s"
 done
 
+assert_grep_file 'edgeeye_deploy_ffmpeg' "$DEPLOY"
+assert_grep_file 'ffmpeg-riscv64-static' "$DEPLOY"
+
 test_summary

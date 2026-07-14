@@ -1,6 +1,6 @@
 #!/bin/sh
 # 用法：
-#   ./deploy           上传 output/ 下所有产物 + scripts/ + sensor ini
+#   ./deploy           上传 output/ 下所有产物 + scripts/ + sensor ini + ffmpeg
 #   ./deploy debris.ko 只上传指定文件
 set -e
 
@@ -10,19 +10,38 @@ BOARD_DIR=/root
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT_DIR="$ROOT_DIR/output"
 SCRIPT_DIR="$ROOT_DIR/scripts"
+FFMPEG_STAGE="$OUT_DIR/ffmpeg-riscv64-static"
+
+edgeeye_deploy_ffmpeg() {
+	if [ ! -x "$FFMPEG_STAGE" ]; then
+		return 0
+	fi
+	if ! "$FFMPEG_STAGE" -hide_banner -muxers 2>/dev/null | grep -q ' hls$'; then
+		echo "WARN: $FFMPEG_STAGE lacks HLS muxer — skip ffmpeg deploy" >&2
+		echo "      rerun: ./scripts/build_ffmpeg_cli.sh" >&2
+		return 0
+	fi
+	echo "deploy ffmpeg -> /mnt/data/bin/ffmpeg"
+	ssh "$BOARD_USER@$BOARD_IP" "mkdir -p /mnt/data/bin"
+	scp "$FFMPEG_STAGE" "$BOARD_USER@$BOARD_IP:/mnt/data/bin/ffmpeg"
+	ssh "$BOARD_USER@$BOARD_IP" "chmod +x /mnt/data/bin/ffmpeg"
+}
 
 if [ -n "$1" ]; then
-    scp "$OUT_DIR/$1" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
-    exit 0
+	scp "$OUT_DIR/$1" "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
+	exit 0
 fi
 
-FILES=$(find "$OUT_DIR" -maxdepth 1 -type f -not -name '.*')
-if [ -z "$FILES" ]; then
-    echo "output/ is empty, run make first"
-    exit 1
+FILES=$(find "$OUT_DIR" -maxdepth 1 -type f -not -name '.*' -not -name 'ffmpeg-riscv64-static' 2>/dev/null)
+if [ -z "$FILES" ] && [ ! -x "$FFMPEG_STAGE" ]; then
+	echo "output/ is empty, run make first"
+	exit 1
 fi
 
-scp $FILES "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
+if [ -n "$FILES" ]; then
+	scp $FILES "$BOARD_USER@$BOARD_IP:$BOARD_DIR/"
+fi
+edgeeye_deploy_ffmpeg
 for s in \
 	run_edgeeye_cam.sh run_edgeeye_stack.sh stop_edgeeye_stack.sh \
 	edgeeye_cam_common.sh edgeeye_snapshots.sh serve_edgeeye_web.sh \

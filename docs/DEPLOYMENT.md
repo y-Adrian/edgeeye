@@ -58,10 +58,12 @@ Stock rootfs has no `ffmpeg` CLI. Cross-compile in Docker:
 
 ```bash
 source scripts/envsetup.sh
-./scripts/build_ffmpeg_cli.sh          # 约 10–20 分钟（含 HLS muxer）
-./scripts/install_ffmpeg_cli_board.sh
-# 板端：/mnt/data/bin/ffmpeg -muxers | grep hls
+./scripts/build_ffmpeg_cli.sh          # 约 10–20 分钟 → output/ffmpeg-riscv64-static
+./deploy                               # 同步到 /mnt/data/bin/ffmpeg
+# 或单独：./scripts/install_ffmpeg_cli_board.sh
 ```
+
+**路径说明：** 编译产物写入仓库 `output/ffmpeg-riscv64-static`（不再只在 Docker `/tmp`）。`./deploy` 会把该文件装到板子 **`/mnt/data/bin/ffmpeg`**（不会误用 `/root/` 下旧副本）。
 
 **`rev8` / `.option arch,+zbb` 编译失败**：Duo S 工具链不支持 RISC-V Zbb，`build_ffmpeg_cli.sh` 已加 `--disable-asm --disable-rvv`。
 
