@@ -28,5 +28,12 @@ assert_grep_file 'MOTION_SOURCE=' "$COMMON"
 assert_grep_file 'MOTION_THRESHOLD' "$COMMON"
 assert_grep_file 'run_rtsp_loop' "$REC"
 assert_grep_file 'grab_jpeg_probe' "$REC"
+assert_grep_file 'wait_for_rtsp_streams' "$REC"
+assert_grep_file 'edgeeye_resolve_ffprobe' "$COMMON"
+assert_grep_file 'motion_rtsp=cam0' "$CONF"
+assert_grep_file 'unset RTSP_URL2' "$COMMON"
+assert_grep_file 'edgeeye_motion_rtsp_url' "$COMMON"
+assert_grep_file 'dual-RTSP mode' "$REC"
+assert_grep_file 'skip record: RTSP cam0 not ready' "$COMMON"
 
 test_summary

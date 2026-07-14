@@ -10,10 +10,11 @@ edgeeye_cfg_default() {
 	EDGEEYE_BOOT_DELAY="${EDGEEYE_BOOT_DELAY:-8}"
 	EDGEEYE_RECORD="${EDGEEYE_RECORD:-0}"
 	EDGEEYE_CLIP_SEC="${EDGEEYE_CLIP_SEC:-30}"
-	EDGEEYE_COOLDOWN_SEC="${EDGEEYE_COOLDOWN_SEC:-15}"
+	EDGEEYE_COOLDOWN_SEC="${EDGEEYE_COOLDOWN_SEC:-60}"
 	EDGEEYE_MOTION_SOURCE="${EDGEEYE_MOTION_SOURCE:-rtsp}"
-	EDGEEYE_MOTION_THRESHOLD="${EDGEEYE_MOTION_THRESHOLD:-3000}"
-	EDGEEYE_MOTION_INTERVAL_SEC="${EDGEEYE_MOTION_INTERVAL_SEC:-2}"
+	EDGEEYE_MOTION_THRESHOLD="${EDGEEYE_MOTION_THRESHOLD:-15000}"
+	EDGEEYE_MOTION_INTERVAL_SEC="${EDGEEYE_MOTION_INTERVAL_SEC:-5}"
+	EDGEEYE_MOTION_RTSP="${EDGEEYE_MOTION_RTSP:-cam0}"
 	EDGEEYE_CLIP_DIR="${EDGEEYE_CLIP_DIR:-}"
 	EDGEEYE_WEB="${EDGEEYE_WEB:-0}"
 	EDGEEYE_WEB_PORT="${EDGEEYE_WEB_PORT:-8080}"
@@ -51,6 +52,12 @@ edgeeye_cfg_set_key() {
 		;;
 	motion_threshold) EDGEEYE_MOTION_THRESHOLD="$val" ;;
 	motion_interval_sec) EDGEEYE_MOTION_INTERVAL_SEC="$val" ;;
+	motion_rtsp)
+		case "$val" in
+		cam0|cam1) EDGEEYE_MOTION_RTSP="$val" ;;
+		*) echo "edgeeye_cam.conf: unknown motion_rtsp=$val (use cam0|cam1)" >&2 ;;
+		esac
+		;;
 	clip_dir) EDGEEYE_CLIP_DIR="$val" ;;
 	web) EDGEEYE_WEB="$val" ;;
 	web_port) EDGEEYE_WEB_PORT="$val" ;;
@@ -114,20 +121,52 @@ edgeeye_resolve_ffmpeg() {
 	return 1
 }
 
+edgeeye_resolve_ffprobe() {
+	for p in /mnt/data/bin/ffprobe /usr/bin/ffprobe ffprobe; do
+		if [ -x "$p" ]; then
+			printf '%s' "$p"
+			return 0
+		fi
+		if command -v "$p" >/dev/null 2>&1; then
+			printf '%s' "$p"
+			return 0
+		fi
+	done
+	return 1
+}
+
+edgeeye_ffprobe_rtsp_stream() {
+	url="$1"
+	probe=""
+
+	probe=$(edgeeye_resolve_ffprobe) || return 1
+	"$probe" -rtsp_transport tcp -v quiet \
+		-show_entries stream=codec_name \
+		-of default=nw=1 "$url" 2>/dev/null | grep -q codec_name
+}
+
 edgeeye_wait_rtsp_ready() {
 	max="${1:-90}"
+	scope="${2:-all}"
 	i=0
+	cam0_url="rtsp://127.0.0.1:${EDGEEYE_PORT}/cam0"
+	cam1_url="rtsp://127.0.0.1:${EDGEEYE_PORT}/cam1"
+
 	while [ "$i" -lt "$max" ]; do
 		if edgeeye_cam_alive && edgeeye_rtsp_port_listening "$EDGEEYE_PORT"; then
-			if command -v ffprobe >/dev/null 2>&1; then
-				if ffprobe -rtsp_transport tcp -v quiet \
-					-show_entries stream=codec_name \
-					-of default=nw=1 \
-					"rtsp://127.0.0.1:${EDGEEYE_PORT}/cam0" 2>/dev/null | \
-					grep -q codec_name; then
+			if edgeeye_ffprobe_rtsp_stream "$cam0_url"; then
+				if [ "$scope" = "cam0" ]; then
 					return 0
 				fi
-			else
+				if [ "$EDGEEYE_MODE" = "dual" ]; then
+					if edgeeye_ffprobe_rtsp_stream "$cam1_url"; then
+						return 0
+					fi
+				else
+					return 0
+				fi
+			fi
+			if ! edgeeye_resolve_ffprobe >/dev/null; then
 				return 0
 			fi
 		fi
@@ -135,6 +174,13 @@ edgeeye_wait_rtsp_ready() {
 		i=$((i + 1))
 	done
 	return 1
+}
+
+edgeeye_motion_rtsp_url() {
+	case "${EDGEEYE_MOTION_RTSP:-cam0}" in
+	cam1) printf '%s' "rtsp://127.0.0.1:${EDGEEYE_PORT}/cam1" ;;
+	*)    printf '%s' "rtsp://127.0.0.1:${EDGEEYE_PORT}/cam0" ;;
+	esac
 }
 
 edgeeye_clip_dir() {
@@ -162,8 +208,9 @@ edgeeye_start_recording() {
 		return 0
 	fi
 
-	if ! edgeeye_wait_rtsp_ready 120; then
-		echo "WARN record: RTSP not ready, starting motion_recorder anyway" >>"$log"
+	if ! edgeeye_wait_rtsp_ready 120 cam0; then
+		echo "skip record: RTSP cam0 not ready after 120s (no motion_recorder)" >>"$log"
+		return 0
 	fi
 
 	case "$EDGEEYE_MOTION_SOURCE" in
@@ -177,12 +224,9 @@ edgeeye_start_recording() {
 		;;
 	esac
 
-	export RTSP_URL="rtsp://127.0.0.1:${EDGEEYE_PORT}/cam0"
-	if [ "$EDGEEYE_MODE" = "dual" ]; then
-		export RTSP_URL2="rtsp://127.0.0.1:${EDGEEYE_PORT}/cam1"
-	else
-		unset RTSP_URL2
-	fi
+	export RTSP_URL="$(edgeeye_motion_rtsp_url)"
+	# 双摄推流 cam0+cam1；动检/录像默认只占用一路（cam0），勿设 RTSP_URL2
+	unset RTSP_URL2
 	export MOTION_SOURCE="$EDGEEYE_MOTION_SOURCE"
 	export MOTION_THRESHOLD="$EDGEEYE_MOTION_THRESHOLD"
 	export MOTION_INTERVAL_SEC="$EDGEEYE_MOTION_INTERVAL_SEC"
@@ -202,7 +246,7 @@ edgeeye_start_recording() {
 	nohup "$BOARD_DIR/motion_recorder" "$EDGEEYE_CLIP_SEC" "$EDGEEYE_COOLDOWN_SEC" \
 		>>"$log" 2>&1 &
 	echo $! > /tmp/motion_recorder.pid
-	echo "motion_recorder pid $(cat /tmp/motion_recorder.pid) source=$EDGEEYE_MOTION_SOURCE dir=$CLIP_DIR" >>"$log"
+	echo "motion_recorder pid $(cat /tmp/motion_recorder.pid) source=$EDGEEYE_MOTION_SOURCE motion_rtsp=${EDGEEYE_MOTION_RTSP:-cam0} url=$RTSP_URL (dual preview unchanged)" >>"$log"
 }
 
 edgeeye_stop_recording() {

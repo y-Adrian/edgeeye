@@ -11,15 +11,19 @@
  *   MOTION_INTERVAL_SEC  探测间隔秒（默认 2）
  *   CLIP_DIR        录像目录（默认 /mnt/sd/clips，回退 /mnt/data/clips）
  *   RTSP_URL        主路 RTSP（默认 rtsp://127.0.0.1:8554/cam0）
- *   RTSP_URL2       双摄第二路（默认同上 cam1，空则跳过）
+ *   RTSP_URL2       可选第二路；未设置则只探/录 cam0（双摄勿默认开，易打崩 RTSP）
  *   FFMPEG          ffmpeg 路径
  */
 #define _GNU_SOURCE
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +39,8 @@
 #define PROBE_H 120
 #define PROBE_JPEG_MAX 65536
 #define PROBE_TIMEOUT_SEC 90
+#define RTSP_WAIT_SEC       120
+#define PROBE_FAIL_LOG_SEC  30
 
 typedef struct {
     unsigned char buf[PROBE_JPEG_MAX];
@@ -43,6 +49,7 @@ typedef struct {
 } probe_state_t;
 
 static volatile sig_atomic_t g_stop;
+static time_t g_last_probe_fail_log;
 
 enum motion_src_mode {
     MOTION_SRC_RTSP = 0,
@@ -215,9 +222,10 @@ static int run_cmd_timeout(const char *cmd, int sec)
 {
     char wrapped[2048];
 
+    /* 用双引号包住 cmd，避免 cmd 内单引号（如 -i 'url'）截断 sh -c */
     if (sec > 0 && access("/usr/bin/timeout", X_OK) == 0) {
         snprintf(wrapped, sizeof(wrapped),
-                 "/usr/bin/timeout %d sh -c '%s'", sec, cmd);
+                 "/usr/bin/timeout %d sh -c \"%s\"", sec, cmd);
         return run_cmd_sync(wrapped);
     }
     return run_cmd_sync(cmd);
@@ -242,17 +250,99 @@ static int read_file_into(const char *path, unsigned char *buf, size_t max,
     return 0;
 }
 
+static int parse_rtsp_host_port(const char *url, char *host, size_t hlen, int *port)
+{
+    const char *p, *slash, *colon;
+    size_t n;
+
+    if (!url || strncmp(url, "rtsp://", 7) != 0)
+        return -1;
+
+    p = url + 7;
+    slash = strchr(p, '/');
+    colon = memchr(p, ':', slash ? (size_t)(slash - p) : strlen(p));
+
+    if (colon) {
+        n = (size_t)(colon - p);
+        if (n == 0 || n >= hlen)
+            return -1;
+        memcpy(host, p, n);
+        host[n] = '\0';
+        *port = atoi(colon + 1);
+    } else {
+        n = slash ? (size_t)(slash - p) : strlen(p);
+        if (n == 0 || n >= hlen)
+            return -1;
+        memcpy(host, p, n);
+        host[n] = '\0';
+        *port = 554;
+    }
+
+    if (*port <= 0 || *port > 65535)
+        return -1;
+    return 0;
+}
+
+static int tcp_port_reachable(const char *host, int port)
+{
+    struct sockaddr_in sa;
+    int fd, rv;
+
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0)
+        return 0;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons((uint16_t)port);
+    if (inet_pton(AF_INET, host, &sa.sin_addr) != 1) {
+        close(fd);
+        return 0;
+    }
+
+    rv = connect(fd, (struct sockaddr *)&sa, sizeof(sa));
+    close(fd);
+    return rv == 0;
+}
+
+static int rtsp_url_reachable(const char *url)
+{
+    char host[128];
+    int port;
+
+    if (parse_rtsp_host_port(url, host, sizeof(host), &port) != 0)
+        return 0;
+    return tcp_port_reachable(host, port);
+}
+
+static void log_probe_fail(const char *tag, const char *url, int rtsp_ready)
+{
+    time_t now;
+
+    if (!rtsp_ready)
+        return;
+
+    now = time(NULL);
+    if (g_last_probe_fail_log != 0 &&
+        (now - g_last_probe_fail_log) < PROBE_FAIL_LOG_SEC)
+        return;
+
+    g_last_probe_fail_log = now;
+    fprintf(stderr, "motion_recorder: probe failed tag=%s url=%s\n", tag, url);
+}
+
 static int grab_jpeg_probe(const char *ffmpeg, const char *url,
                            const char *outpath)
 {
     char cmd[1024];
     struct stat st;
 
+    /* URL/路径勿用单引号：run_cmd_timeout 用 sh -c "..." 包装 */
     snprintf(cmd, sizeof(cmd),
-             "%s -y -loglevel error -rtsp_transport tcp "
+             "%s -y -loglevel quiet -rtsp_transport tcp "
              "-analyzeduration 2000000 -probesize 1000000 "
-             "-i '%s' -vf scale=%d:%d -frames:v 1 -q:v 10 "
-             "-f image2 '%s'",
+             "-i %s -vf scale=%d:%d -frames:v 1 -q:v 10 "
+             "-f image2 %s >/dev/null 2>&1",
              ffmpeg, url, PROBE_W, PROBE_H, outpath);
 
     if (run_cmd_timeout(cmd, PROBE_TIMEOUT_SEC) != 0)
@@ -262,9 +352,58 @@ static int grab_jpeg_probe(const char *ffmpeg, const char *url,
     return 0;
 }
 
+static int wait_for_rtsp_streams(const char *ffmpeg, const char *url1,
+                                 const char *url2, int max_sec)
+{
+    char path[128];
+    int waited = 0;
+    int logged = 0;
+
+    while (!g_stop && waited < max_sec) {
+        if (!rtsp_url_reachable(url1)) {
+            if (!logged) {
+                printf("motion_recorder: waiting for RTSP %s\n", url1);
+                fflush(stdout);
+                logged = 1;
+            }
+            sleep(2);
+            waited += 2;
+            continue;
+        }
+
+        snprintf(path, sizeof(path), "/tmp/motion_wait_cam0.jpg");
+        if (grab_jpeg_probe(ffmpeg, url1, path) != 0) {
+            unlink(path);
+            sleep(2);
+            waited += 2;
+            continue;
+        }
+        unlink(path);
+
+        if (url2 && url2[0]) {
+            snprintf(path, sizeof(path), "/tmp/motion_wait_cam1.jpg");
+            if (grab_jpeg_probe(ffmpeg, url2, path) != 0) {
+                unlink(path);
+                sleep(2);
+                waited += 2;
+                continue;
+            }
+            unlink(path);
+        }
+
+        printf("motion_recorder: RTSP ready\n");
+        fflush(stdout);
+        return 0;
+    }
+
+    if (!g_stop)
+        fprintf(stderr, "motion_recorder: RTSP not ready after %ds\n", max_sec);
+    return -1;
+}
+
 static int motion_from_rtsp_probe(const char *ffmpeg, const char *url,
                                   const char *tag, int threshold,
-                                  probe_state_t *st)
+                                  probe_state_t *st, int rtsp_ready)
 {
     char path[128];
     unsigned char cur[PROBE_JPEG_MAX];
@@ -275,8 +414,7 @@ static int motion_from_rtsp_probe(const char *ffmpeg, const char *url,
     snprintf(path, sizeof(path), "/tmp/motion_%s.jpg", tag);
 
     if (grab_jpeg_probe(ffmpeg, url, path) != 0) {
-        fprintf(stderr, "motion_recorder: probe failed tag=%s url=%s\n",
-                tag, url);
+        log_probe_fail(tag, url, rtsp_ready);
         return 0;
     }
 
@@ -357,6 +495,7 @@ static int run_rtsp_loop(const char *ffmpeg, const char *dir,
     probe_state_t st0;
     probe_state_t st1;
     time_t last_clip = 0;
+    int rtsp_ready = 0;
 
     memset(&st0, 0, sizeof(st0));
     memset(&st1, 0, sizeof(st1));
@@ -364,14 +503,34 @@ static int run_rtsp_loop(const char *ffmpeg, const char *dir,
     printf("motion_recorder: rtsp mode interval=%ds threshold=%d url=%s\n",
            interval_sec, threshold, url1);
 
+    if (wait_for_rtsp_streams(ffmpeg, url1, url2, RTSP_WAIT_SEC) == 0)
+        rtsp_ready = 1;
+
     while (!g_stop) {
         int motion = 0;
         time_t now;
 
         reap_children();
-        motion = motion_from_rtsp_probe(ffmpeg, url1, "cam0", threshold, &st0);
+        /* 推流进程挂掉后回到等待，避免持续 probe failed */
+        if (rtsp_ready && !rtsp_url_reachable(url1)) {
+            fprintf(stderr, "motion_recorder: RTSP lost, waiting again\n");
+            rtsp_ready = 0;
+            st0.have = 0;
+            st1.have = 0;
+        }
+        if (!rtsp_ready) {
+            if (wait_for_rtsp_streams(ffmpeg, url1, url2, interval_sec > 0 ?
+                                      interval_sec : 2) == 0)
+                rtsp_ready = 1;
+            else
+                continue;
+        }
+
+        motion = motion_from_rtsp_probe(ffmpeg, url1, "cam0", threshold, &st0,
+                                        rtsp_ready);
         if (!motion && url2 && url2[0])
-            motion = motion_from_rtsp_probe(ffmpeg, url2, "cam1", threshold, &st1);
+            motion = motion_from_rtsp_probe(ffmpeg, url2, "cam1", threshold,
+                                            &st1, rtsp_ready);
 
         if (motion) {
             now = time(NULL);
@@ -451,6 +610,7 @@ static int run_auto_loop(int fd, int epfd, const char *ffmpeg, const char *dir,
     probe_state_t st1;
     time_t last_clip = 0;
     int wait_ms = interval_sec > 0 ? interval_sec * 1000 : 2000;
+    int rtsp_ready = 0;
 
     memset(&st0, 0, sizeof(st0));
     memset(&st1, 0, sizeof(st1));
@@ -464,6 +624,17 @@ static int run_auto_loop(int fd, int epfd, const char *ffmpeg, const char *dir,
         time_t now;
 
         reap_children();
+        if (rtsp_ready && !rtsp_url_reachable(url1)) {
+            fprintf(stderr, "motion_recorder: RTSP lost, waiting again\n");
+            rtsp_ready = 0;
+            st0.have = 0;
+            st1.have = 0;
+        }
+        if (!rtsp_ready)
+            rtsp_ready = (wait_for_rtsp_streams(ffmpeg, url1, url2,
+                                                interval_sec > 0 ?
+                                                interval_sec : 2) == 0);
+
         nfds = epoll_wait(epfd, events, 1, wait_ms);
         if (nfds < 0) {
             if (errno == EINTR)
@@ -480,10 +651,12 @@ static int run_auto_loop(int fd, int epfd, const char *ffmpeg, const char *dir,
                 motion = 1;
         }
 
-        if (!motion) {
-            motion = motion_from_rtsp_probe(ffmpeg, url1, "cam0", threshold, &st0);
+        if (!motion && rtsp_ready) {
+            motion = motion_from_rtsp_probe(ffmpeg, url1, "cam0", threshold, &st0,
+                                            rtsp_ready);
             if (!motion && url2 && url2[0])
-                motion = motion_from_rtsp_probe(ffmpeg, url2, "cam1", threshold, &st1);
+                motion = motion_from_rtsp_probe(ffmpeg, url2, "cam1", threshold,
+                                                &st1, rtsp_ready);
         }
 
         if (motion) {
@@ -578,9 +751,10 @@ int main(int argc, char **argv)
     url1 = getenv("RTSP_URL");
     if (!url1)
         url1 = "rtsp://127.0.0.1:8554/cam0";
+    /* 仅当显式设置 RTSP_URL2 才探/录第二路；默认空，避免双摄并发打崩 RTSP */
     url2 = getenv("RTSP_URL2");
-    if (!url2)
-        url2 = "rtsp://127.0.0.1:8554/cam1";
+    if (!url2 || !url2[0] || strcmp(url2, "none") == 0 || strcmp(url2, "-") == 0)
+        url2 = "";
 
     signal(SIGINT, on_sig);
     signal(SIGTERM, on_sig);
@@ -599,6 +773,9 @@ int main(int argc, char **argv)
     printf("motion_recorder: dir=%s clip=%ds cooldown=%ds source=%s\n",
            dir, clip_sec, cooldown_sec,
            src_env && src_env[0] ? src_env : "rtsp");
+    if (!url2 || !url2[0])
+        printf("motion_recorder: dual-RTSP mode — probe/clip on %s only (no RTSP_URL2)\n",
+               url1);
 
     if (src_mode == MOTION_SRC_DEBRIS || src_mode == MOTION_SRC_AUTO) {
         if (open_debris_epoll(&fd, &epfd) < 0) {
