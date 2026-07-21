@@ -41,7 +41,8 @@ for t in \
 	"$DIR/test_08_suite_profiles.sh" \
 	"$DIR/test_09_motion_record_config.sh" \
 	"$DIR/test_10_web_hls_config.sh" \
-	"$DIR/test_11_wifi_docs.sh"
+	"$DIR/test_11_wifi_docs.sh" \
+	"$DIR/test_12_lite_gc2083_config.sh"
 do
 	run_one "$t"
 done

@@ -23,6 +23,7 @@
 | LT-06 | `test_06_golden_logs.sh` | fixture 日志满足板上验收 grep 模式 |
 | LT-07 | `test_07_stream_configs.sh` | 混搭双摄 sensor ini 与 `make` 部署包 |
 | LT-11 | `test_11_wifi_docs.sh` | WiFi 文档/脚本/示例 conf 存在性 |
+| LT-12 | `test_12_lite_gc2083_config.sh` | Lite 默认 `mode=gc2083`、AI 路线文档 |
 
 ### 运行
 
