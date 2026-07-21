@@ -111,20 +111,29 @@ edgeeye_board_ip() {
 }
 
 edgeeye_resolve_ffmpeg() {
-	if [ -f "$BOARD_DIR/media_tools.sh" ]; then
-		# shellcheck disable=SC1091
-		. "$BOARD_DIR/media_tools.sh"
-	fi
-	if [ -n "$FFMPEG" ] && [ -x "$FFMPEG" ]; then
-		printf '%s' "$FFMPEG"
-		return 0
-	fi
-	for p in /mnt/data/bin/ffmpeg /mnt/system/usr/bin/ffmpeg /usr/bin/ffmpeg ffmpeg; do
-		if command -v "$p" >/dev/null 2>&1 || [ -x "$p" ]; then
+	# 固定路径优先；勿先 source media_tools（cwd=/root 时会把 ./ffmpeg 误报成 bare "ffmpeg"）
+	for p in /mnt/data/bin/ffmpeg /mnt/system/usr/bin/ffmpeg /usr/bin/ffmpeg; do
+		if [ -x "$p" ]; then
 			printf '%s' "$p"
 			return 0
 		fi
 	done
+	if command -v ffmpeg >/dev/null 2>&1; then
+		command -v ffmpeg
+		return 0
+	fi
+	if [ -f "$BOARD_DIR/media_tools.sh" ]; then
+		# shellcheck disable=SC1091
+		. "$BOARD_DIR/media_tools.sh"
+		case "$FFMPEG" in
+		/*)
+			if [ -x "$FFMPEG" ]; then
+				printf '%s' "$FFMPEG"
+				return 0
+			fi
+			;;
+		esac
+	fi
 	return 1
 }
 
@@ -188,6 +197,33 @@ edgeeye_motion_rtsp_url() {
 	cam1) printf '%s' "rtsp://127.0.0.1:${EDGEEYE_PORT}/cam1" ;;
 	*)    printf '%s' "rtsp://127.0.0.1:${EDGEEYE_PORT}/cam0" ;;
 	esac
+}
+
+edgeeye_web_port_listening() {
+	port="${1:-${EDGEEYE_WEB_PORT:-8080}}"
+	netstat -ln 2>/dev/null | grep -q ":$port " ||
+		ss -ln 2>/dev/null | grep -q ":$port"
+}
+
+edgeeye_wait_web_port() {
+	port="${1:-${EDGEEYE_WEB_PORT:-8080}}"
+	max="${2:-15}"
+	i=0
+	while [ "$i" -lt "$max" ]; do
+		if edgeeye_web_port_listening "$port"; then
+			return 0
+		fi
+		sleep 1
+		i=$((i + 1))
+	done
+	return 1
+}
+
+edgeeye_ffmpeg_has_hls() {
+	ffmpeg=""
+	ffmpeg=$(edgeeye_resolve_ffmpeg) || return 1
+	# muxers 行形如 "  E hls             Apple HTTP Live Streaming"
+	"$ffmpeg" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'
 }
 
 edgeeye_clip_dir() {
@@ -271,8 +307,16 @@ edgeeye_stop_hls() {
 			rm -f "$pf"
 		fi
 	done
-	# 兜底：残留 remux 进程
-	pkill -f "ffmpeg.*web/hls/" 2>/dev/null || true
+	# 按 PID 杀 remux；勿用 pkill -f web/hls（会误伤 cmdline 含该串的 ssh）
+	ps w 2>/dev/null | awk '/ffmpeg/ && /-f hls/ && /8554/ {print $1}' | while read -r pid; do
+		[ -n "$pid" ] || continue
+		kill "$pid" 2>/dev/null || true
+	done
+	sleep 1
+	ps w 2>/dev/null | awk '/ffmpeg/ && /-f hls/ && /8554/ {print $1}' | while read -r pid; do
+		[ -n "$pid" ] || continue
+		kill -9 "$pid" 2>/dev/null || true
+	done
 }
 
 edgeeye_stop_web() {

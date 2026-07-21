@@ -23,7 +23,7 @@ if [ ! -x "$FFMPEG" ]; then
 	exit 1
 fi
 
-if ! "$FFMPEG" -hide_banner -muxers 2>/dev/null | grep -q ' hls$'; then
+if ! "$FFMPEG" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'; then
 	echo "ERROR: $FFMPEG has no HLS muxer (old build?)" >&2
 	echo "  rm -rf /tmp/debris_ffmpeg_out /tmp/ffmpeg-6.1.1 output/ffmpeg-riscv64-static" >&2
 	echo "  ./scripts/build_ffmpeg_cli.sh" >&2

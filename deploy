@@ -16,7 +16,7 @@ edgeeye_deploy_ffmpeg() {
 	if [ ! -x "$FFMPEG_STAGE" ]; then
 		return 0
 	fi
-	if ! "$FFMPEG_STAGE" -hide_banner -muxers 2>/dev/null | grep -q ' hls$'; then
+	if ! "$FFMPEG_STAGE" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'; then
 		echo "WARN: $FFMPEG_STAGE lacks HLS muxer — skip ffmpeg deploy" >&2
 		echo "      rerun: ./scripts/build_ffmpeg_cli.sh" >&2
 		return 0

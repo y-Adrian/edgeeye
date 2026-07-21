@@ -94,7 +94,7 @@ mkdir -p "$EDGEEYE_ROOT/output"
 cp -f "$OUT/bin/ffmpeg" "$STAGE_OUT"
 chmod +x "$STAGE_OUT"
 
-if ! "$STAGE_OUT" -hide_banner -muxers 2>/dev/null | grep -q ' hls$'; then
+if ! "$STAGE_OUT" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'; then
 	echo "ERROR: staged ffmpeg missing HLS muxer" >&2
 	exit 1
 fi

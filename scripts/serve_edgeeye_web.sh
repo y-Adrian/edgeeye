@@ -21,33 +21,46 @@ fi
 mkdir -p "$WEB_ROOT/snapshots" "$WEB_ROOT/hls"
 
 IP=$(edgeeye_board_ip)
-cat >"$WEB_ROOT/status.json" <<EOF
-{"mode":"$EDGEEYE_MODE","port":$EDGEEYE_PORT,"res":"$EDGEEYE_RES","ip":"$IP","dual":$([ "$EDGEEYE_MODE" = dual ] && echo true || echo false),"web_live":"$LIVE"}
+write_status() {
+	live_mode="$1"
+	cat >"$WEB_ROOT/status.json" <<EOF
+{"mode":"$EDGEEYE_MODE","port":$EDGEEYE_PORT,"res":"$EDGEEYE_RES","ip":"$IP","dual":$([ "$EDGEEYE_MODE" = dual ] && echo true || echo false),"web_live":"$live_mode"}
 EOF
+}
 
 edgeeye_stop_web
 
 case "$LIVE" in
 hls)
-	if [ -x "$DIR/edgeeye_hls.sh" ]; then
-		sh "$DIR/edgeeye_hls.sh" || \
-			echo "WARN: HLS remux failed — check ffmpeg HLS muxer / RTSP" >&2
+	if [ ! -f "$DIR/edgeeye_hls.sh" ]; then
+		echo "WARN: missing edgeeye_hls.sh — run ./deploy on host" >&2
+		LIVE="snapshot"
+	elif ! edgeeye_ffmpeg_has_hls; then
+		echo "WARN: ffmpeg lacks HLS muxer — rebuild: build_ffmpeg_cli.sh" >&2
+		LIVE="snapshot"
 	else
-		echo "WARN: missing edgeeye_hls.sh" >&2
+		if ! sh "$DIR/edgeeye_hls.sh"; then
+			echo "WARN: HLS remux failed — fallback snapshot" >&2
+			LIVE="snapshot"
+		fi
 	fi
 	;;
-snapshot)
-	if edgeeye_resolve_ffmpeg >/dev/null 2>&1; then
-		sh "$DIR/edgeeye_snapshots.sh" 2>/dev/null || true
-	else
-		echo "snapshots disabled: no ffmpeg on board"
-	fi
-	;;
+snapshot) ;;
 *)
 	echo "unknown web_live=$LIVE (use hls|snapshot)" >&2
 	exit 1
 	;;
 esac
+
+if [ "$LIVE" = "snapshot" ]; then
+	if edgeeye_resolve_ffmpeg >/dev/null 2>&1; then
+		sh "$DIR/edgeeye_snapshots.sh" 2>/dev/null || true
+	else
+		echo "snapshots disabled: no ffmpeg on board"
+	fi
+fi
+
+write_status "$LIVE"
 
 if ! command -v python3 >/dev/null 2>&1; then
 	echo "python3 required"
@@ -55,7 +68,6 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 : > /tmp/edgeeye_web.log
-# 优先自定义服务器（正确 MIME）；退回 http.server
 if [ -f "$DIR/edgeeye_http_server.py" ]; then
 	nohup python3 "$DIR/edgeeye_http_server.py" "$PORT" "$WEB_ROOT" \
 		>>/tmp/edgeeye_web.log 2>&1 &
@@ -64,17 +76,15 @@ else
 	nohup python3 -m http.server "$PORT" --bind 0.0.0.0 >>/tmp/edgeeye_web.log 2>&1 &
 fi
 echo $! >"$PIDFILE"
-sleep 2
 
-if ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-	echo "web server exited — see /tmp/edgeeye_web.log"
-	tail -5 /tmp/edgeeye_web.log 2>/dev/null
-	exit 1
-fi
-
-if ! netstat -ln 2>/dev/null | grep -q ":$PORT " && \
-   ! ss -ln 2>/dev/null | grep -q ":$PORT"; then
-	echo "port $PORT not listening"
+if ! edgeeye_wait_web_port "$PORT" 15; then
+	if ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+		echo "web server exited — see /tmp/edgeeye_web.log"
+		tail -10 /tmp/edgeeye_web.log 2>/dev/null
+		exit 1
+	fi
+	echo "port $PORT not listening after 15s — see /tmp/edgeeye_web.log"
+	tail -10 /tmp/edgeeye_web.log 2>/dev/null
 	exit 1
 fi
 
