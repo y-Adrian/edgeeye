@@ -19,7 +19,7 @@
 | 2 | AI 事件本地日志骨架（`apps/ai/ai_event_log`，无模型） | ✅ |
 | 3 | AI 取帧通路（`apps/ai/ai_grab_frame`，RTSP→JPEG） | ✅ |
 | 4 | 板端人检测（`ai_person_detect.sh` + MobileDet pedestrian）→ 写日志 | ✅ |
-| 5 | （可选）检测触发录像，与 `motion_recorder` 衔接 | 待做 |
+| 5 | 检测触发录像（`ai_person_detect.sh --record`） | ✅ |
 
 ### 步骤 2 用法
 
@@ -55,6 +55,18 @@ tail -1 /mnt/sd/events/events.ndjson
 ```
 
 可与 `edgeeye_cam` 同时运行（JPEG 检测，不抢 VI）。
+
+### 步骤 5 用法
+
+```bash
+# 检测到人时额外录一段 cam0（默认 15s）
+./ai_person_detect.sh --once --record --clip-sec 15
+# 无人画面可用 --simulate-person 验录像通路
+# ./ai_person_detect.sh --once --simulate-person --record --clip-sec 8
+ls /mnt/sd/clips/   # 或 /mnt/data/clips/
+
+./scripts/check_ai_person_record_board.sh
+```
 
 ## 板上已具备的 AI 资产（摸底）
 

@@ -1,22 +1,24 @@
 #!/bin/sh
-# ai_person_detect.sh — 步骤 4：取帧 + MobileDet 行人检测 + 本地事件日志
+# ai_person_detect.sh — 取帧 + MobileDet 行人检测 + 本地日志 + 可选录像
 #
 # 依赖（板上）：
-#   /root/ai_grab_frame
-#   /root/ai_event_log
+#   /root/ai_grab_frame  /root/ai_event_log  /root/record_clip.sh
 #   /mnt/system/usr/bin/ai/sample_img_det
 #   /mnt/cvimodel/mobiledetv2-pedestrian-d0-ls-448.cvimodel
-#   /mnt/system/lib/libcvi_tdl_app.so  （可用 install_tdl_libs_board.sh 部署）
+#   /mnt/system/lib/libcvi_tdl_app.so
 #
-# 用法（板上）：
-#   ./ai_person_detect.sh --once
-#   ./ai_person_detect.sh --once --log-dir /mnt/data/events
+# 用法：
 #   ./ai_person_detect.sh --dry-run
+#   ./ai_person_detect.sh --once
+#   ./ai_person_detect.sh --once --record --clip-sec 15
+#   ./ai_person_detect.sh --once --simulate-person --record   # 无人时验录像通路
+#   ./ai_person_detect.sh --once --record --log-dir /mnt/data/events
 set -e
 
 BOARD_DIR="${BOARD_DIR:-/root}"
 GRAB="${BOARD_DIR}/ai_grab_frame"
 LOGBIN="${BOARD_DIR}/ai_event_log"
+RECORD_SH="${BOARD_DIR}/record_clip.sh"
 SAMPLE="${SAMPLE_IMG_DET:-/mnt/system/usr/bin/ai/sample_img_det}"
 MODEL_NAME="mobiledetv2-pedestrian"
 MODEL_PATH="${AI_MODEL_PATH:-/mnt/cvimodel/mobiledetv2-pedestrian-d0-ls-448.cvimodel}"
@@ -25,20 +27,40 @@ LOG_DIR="${AI_LOG_DIR:-}"
 URL="${AI_RTSP_URL:-rtsp://127.0.0.1:8554/cam0}"
 WIDTH="${AI_FRAME_W:-448}"
 HEIGHT="${AI_FRAME_H:-448}"
+CLIP_SEC="${AI_CLIP_SEC:-15}"
+CLIP_DIR="${CLIP_DIR:-}"
 DRY=0
 ONCE=0
+DO_RECORD=0
+SIMULATE=0
 
 export LD_LIBRARY_PATH="/mnt/system/lib:/mnt/system/usr/lib:/mnt/system/usr/lib/3rd:${LD_LIBRARY_PATH:-}"
 
 usage() {
-	sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
 	exit 1
+}
+
+resolve_clip_dir() {
+	if [ -n "$CLIP_DIR" ]; then
+		printf '%s' "$CLIP_DIR"
+		return 0
+	fi
+	if [ -d /mnt/sd ] && [ -w /mnt/sd ]; then
+		printf '%s' "/mnt/sd/clips"
+	else
+		printf '%s' "/mnt/data/clips"
+	fi
 }
 
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--dry-run) DRY=1; shift ;;
 	--once) ONCE=1; shift ;;
+	--record) DO_RECORD=1; shift ;;
+	--simulate-person) SIMULATE=1; shift ;;
+	--clip-sec) CLIP_SEC="$2"; shift 2 ;;
+	--clip-dir) CLIP_DIR="$2"; shift 2 ;;
 	--log-dir) LOG_DIR="$2"; shift 2 ;;
 	--url) URL="$2"; shift 2 ;;
 	--frame) FRAME="$2"; shift 2 ;;
@@ -55,12 +77,17 @@ if [ "$DRY" = "1" ]; then
 	echo "  model=$MODEL_PATH"
 	echo "  frame=$FRAME"
 	echo "  url=$URL"
+	echo "  record=$DO_RECORD clip_sec=$CLIP_SEC clip_dir=$(resolve_clip_dir)"
 	[ -x "$GRAB" ] || { echo "missing $GRAB"; exit 1; }
 	[ -x "$LOGBIN" ] || { echo "missing $LOGBIN"; exit 1; }
 	[ -x "$SAMPLE" ] || { echo "missing $SAMPLE"; exit 1; }
 	[ -f "$MODEL_PATH" ] || { echo "missing model $MODEL_PATH"; exit 1; }
 	[ -f /mnt/system/lib/libcvi_tdl_app.so ] || \
 		echo "WARN: missing libcvi_tdl_app.so — run install_tdl_libs_board.sh"
+	if [ "$DO_RECORD" = "1" ]; then
+		[ -x "$RECORD_SH" ] || [ -x /mnt/data/bin/ffmpeg ] || \
+			echo "WARN: record_clip.sh / ffmpeg may be missing"
+	fi
 	echo "  deps ok"
 	exit 0
 fi
@@ -68,6 +95,51 @@ fi
 [ "$ONCE" = "1" ] || usage
 
 [ -x "$GRAB" ] || { echo "missing $GRAB"; exit 1; }
+
+write_event_and_maybe_record() {
+	_score="$1"
+	_source="$2"
+	echo "ai_person_detect: person score=$_score source=$_source — write event log"
+	if [ -x "$LOGBIN" ]; then
+		if [ -n "$LOG_DIR" ]; then
+			"$LOGBIN" --inject person --score "$_score" --cam cam0 --source "$_source" --log-dir "$LOG_DIR"
+		else
+			"$LOGBIN" --inject person --score "$_score" --cam cam0 --source "$_source"
+		fi
+	else
+		echo "WARN: no ai_event_log binary"
+	fi
+
+	if [ "$DO_RECORD" = "1" ]; then
+		CDIR=$(resolve_clip_dir)
+		mkdir -p "$CDIR" 2>/dev/null || true
+		export CLIP_DIR="$CDIR"
+		export RTSP_PORT=8554
+		if [ -x /mnt/data/bin/ffmpeg ]; then
+			export FFMPEG=/mnt/data/bin/ffmpeg
+		fi
+		if [ -x "$RECORD_SH" ]; then
+			echo "ai_person_detect: record ${CLIP_SEC}s -> $CDIR"
+			sh "$RECORD_SH" "$CLIP_SEC" cam0
+		elif [ -x /mnt/data/bin/ffmpeg ]; then
+			OUT="$CDIR/$(date +%s)_cam0_ai.mp4"
+			echo "ai_person_detect: ffmpeg record -> $OUT"
+			/mnt/data/bin/ffmpeg -y -loglevel warning -rtsp_transport tcp \
+				-i "$URL" -c copy -t "$CLIP_SEC" "$OUT"
+			echo "saved: $OUT"
+		else
+			echo "WARN: cannot record — no record_clip.sh / ffmpeg"
+			exit 1
+		fi
+	fi
+}
+
+if [ "$SIMULATE" = "1" ]; then
+	echo "ai_person_detect: SIMULATE person (skip model)"
+	write_event_and_maybe_record "0.9000" "simulate"
+	exit 0
+fi
+
 [ -x "$SAMPLE" ] || { echo "missing $SAMPLE"; exit 1; }
 [ -f "$MODEL_PATH" ] || { echo "missing $MODEL_PATH"; exit 1; }
 
@@ -80,7 +152,7 @@ set +e
 "$SAMPLE" "$MODEL_NAME" "$MODEL_PATH" "$FRAME" >"$DET_LOG" 2>&1
 DET_RC=$?
 set -e
-cat "$DET_LOG"
+grep -vE '^(found not named|parse |minlevel:)' "$DET_LOG" || cat "$DET_LOG"
 
 OBJNUM=$(grep -E '^objnum: ' "$DET_LOG" | tail -1 | awk '{print $2}')
 [ -n "$OBJNUM" ] || OBJNUM=0
@@ -93,7 +165,6 @@ if [ "$DET_RC" -ne 0 ]; then
 fi
 
 if [ "$OBJNUM" -gt 0 ] 2>/dev/null; then
-	# 从 boxes 行取最大 score（字段第 6 个）
 	SCORE=$(grep -E '^boxes=' "$DET_LOG" | tail -1 | sed 's/^boxes=//' | tr -d '[]' | \
 		awk -F',' '{
 			max=0
@@ -105,18 +176,9 @@ if [ "$OBJNUM" -gt 0 ] 2>/dev/null; then
 			printf "%.4f", max
 		}')
 	[ -n "$SCORE" ] || SCORE="0.5000"
-	echo "ai_person_detect: person detected score=$SCORE — write event log"
-	if [ -x "$LOGBIN" ]; then
-		if [ -n "$LOG_DIR" ]; then
-			"$LOGBIN" --inject person --score "$SCORE" --cam cam0 --source detect --log-dir "$LOG_DIR"
-		else
-			"$LOGBIN" --inject person --score "$SCORE" --cam cam0 --source detect
-		fi
-	else
-		echo "WARN: no ai_event_log binary"
-	fi
+	write_event_and_maybe_record "$SCORE" "detect"
 else
-	echo "ai_person_detect: no person in frame (no event written)"
+	echo "ai_person_detect: no person in frame (no event/record)"
 fi
 
 exit 0

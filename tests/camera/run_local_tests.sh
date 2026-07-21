@@ -45,7 +45,8 @@ for t in \
 	"$DIR/test_12_lite_gc2083_config.sh" \
 	"$DIR/test_13_ai_event_log.sh" \
 	"$DIR/test_14_ai_grab_frame.sh" \
-	"$DIR/test_15_ai_person_detect.sh"
+	"$DIR/test_15_ai_person_detect.sh" \
+	"$DIR/test_16_ai_person_record.sh"
 do
 	run_one "$t"
 done

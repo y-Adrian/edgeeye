@@ -27,6 +27,7 @@
 | LT-13 | `test_13_ai_event_log.sh` | `ai_event_log` 源码与 conf `ai=` 占位 |
 | LT-14 | `test_14_ai_grab_frame.sh` | `ai_grab_frame` RTSP→JPEG 取帧 |
 | LT-15 | `test_15_ai_person_detect.sh` | 人检测编排 / TDL 库安装脚本 |
+| LT-16 | `test_16_ai_person_record.sh` | 人检测触发 `--record` 录像 |
 
 ### 运行
 
