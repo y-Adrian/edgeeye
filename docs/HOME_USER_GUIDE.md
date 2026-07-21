@@ -155,6 +155,7 @@ tail -f /tmp/edgeeye_stack.log
 | 浏览器无快照 | 板端需 ffmpeg；或只用 RTSP |
 | 单摄切双摄失败 | reboot 或 `start_my_cam_rtsp.sh dual --reboot` |
 | 板子要上外网 | 见 [WIFI.md](./WIFI.md)：`setup_wifi_board.sh` + `check_wifi_board.sh` |
+| 同 WiFi 看双路直播 | `web=1` 后打开 `http://板子wlan0-IP:8080/`；验证 `./scripts/check_lan_live_board.sh` |
 
 ## 日志位置
 

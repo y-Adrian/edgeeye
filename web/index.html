@@ -114,12 +114,14 @@
     }
 
     fetch('status.json').then(function (r) { return r.json(); }).then(function (s) {
-      var ip = s.ip || location.hostname || '192.168.42.1';
+      // 用当前访问主机名：WiFi 打开则是 wlan IP，USB 打开则是 192.168.42.1
+      var ip = location.hostname || s.ip || '192.168.42.1';
       var port = s.port || 8554;
       var dual = !!s.dual;
       var live = s.web_live || 'hls';
+      var lanHint = s.ip && s.ip !== ip ? (' · LAN ' + s.ip) : '';
       document.getElementById('status').textContent =
-        '模式 ' + s.mode + ' · ' + s.res + ' · ' + live + ' · ' + ip + ':' + port;
+        '模式 ' + s.mode + ' · ' + s.res + ' · ' + live + ' · ' + ip + ':' + port + lanHint;
       var u0 = 'rtsp://' + ip + ':' + port + '/cam0';
       document.getElementById('rtsp0').href = u0;
       document.getElementById('rtsp0').textContent = u0;

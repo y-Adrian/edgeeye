@@ -123,6 +123,45 @@ ssh root@192.168.31.14
 
 USB 与 WiFi 可并存；产品栈本身不依赖 WiFi。
 
+## 同 WiFi 看双路直播（局域网）
+
+前提：板子已连 WiFi，且：
+
+```ini
+# /root/edgeeye_cam.conf
+web=1
+web_live=hls
+record=0
+```
+
+```bash
+./run_edgeeye_stack.sh
+ip -4 addr show wlan0    # 记下 IP，例如 192.168.31.14
+```
+
+**同一路由器下的手机/电脑**（不必插 USB）打开：
+
+```text
+http://<wlan0-IP>:8080/
+```
+
+或 VLC：
+
+```text
+rtsp://<wlan0-IP>:8554/cam0
+rtsp://<wlan0-IP>:8554/cam1
+```
+
+一键验证（Mac）：
+
+```bash
+./scripts/check_lan_live_board.sh
+# 或指定 IP：
+BOARD_LAN_IP=192.168.31.14 ./scripts/check_lan_live_board.sh
+```
+
+跨公网 / 不同网络见文档说明：需 VPN（如 Tailscale），不是默认能力。
+
 ## 常见问题
 
 | 现象 | 处理 |
@@ -132,6 +171,7 @@ USB 与 WiFi 可并存；产品栈本身不依赖 WiFi。
 | 企业网连不上 | 需 WPA-EAP，当前镜像通常不支持 |
 | 开机断网 | 用 `--autostart` 或检查 `/mnt/system/auto.sh` |
 | 想换网 | 再跑一遍 `setup_wifi_board.sh`（会备份旧 conf） |
+| 同 WiFi 但手机打不开直播 | 小米路由等可能开了 **AP 隔离/无线隔离**，关掉后重试；或先用 USB `http://192.168.42.1:8080/` 确认栈正常 |
 
 ## 部署脚本到板子
 

@@ -21,10 +21,11 @@ fi
 mkdir -p "$WEB_ROOT/snapshots" "$WEB_ROOT/hls"
 
 IP=$(edgeeye_board_ip)
+USB_IP=$(edgeeye_board_ip_usb)
 write_status() {
 	live_mode="$1"
 	cat >"$WEB_ROOT/status.json" <<EOF
-{"mode":"$EDGEEYE_MODE","port":$EDGEEYE_PORT,"res":"$EDGEEYE_RES","ip":"$IP","dual":$([ "$EDGEEYE_MODE" = dual ] && echo true || echo false),"web_live":"$live_mode"}
+{"mode":"$EDGEEYE_MODE","port":$EDGEEYE_PORT,"res":"$EDGEEYE_RES","ip":"$IP","usb_ip":"$USB_IP","dual":$([ "$EDGEEYE_MODE" = dual ] && echo true || echo false),"web_live":"$live_mode"}
 EOF
 }
 
