@@ -17,7 +17,7 @@
 |------|------|------|
 | 1 | 单摄 GC2083 产品基线（默认 conf / 文档） | ✅ |
 | 2 | AI 事件本地日志骨架（`apps/ai/ai_event_log`，无模型） | ✅ |
-| 3 | AI 取帧通路（低分辨率帧供检测） | 待做 |
+| 3 | AI 取帧通路（`apps/ai/ai_grab_frame`，RTSP→JPEG） | ✅ |
 | 4 | 板端人检测（TPU / `mobiledet` 行人模型等）→ 写日志 | 待做 |
 | 5 | （可选）检测触发录像，与 `motion_recorder` 衔接 | 待做 |
 
@@ -29,6 +29,17 @@
 tail -1 /mnt/sd/events/events.ndjson
 ./scripts/check_ai_event_log_board.sh   # Mac 远程验
 ```
+
+### 步骤 3 用法
+
+```bash
+# 需 edgeeye_cam 已推 cam0
+./ai_grab_frame --dry-run
+./ai_grab_frame --once                    # 默认 448x448 → /tmp/edgeeye_ai_frame.jpg
+./scripts/check_ai_grab_frame_board.sh
+```
+
+默认分辨率 **448×448**，对齐板上 `mobiledetv2-pedestrian-*-448.cvimodel`。
 
 ## 板上已具备的 AI 资产（摸底）
 

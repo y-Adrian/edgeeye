@@ -46,5 +46,5 @@ clean:
 	rm -rf $(BUILD_DIR)
 	$(MAKE) -C camera clean 2>/dev/null || true
 	$(MAKE) -C $(ROOT_DIR)/tests/camera/my_cam_test clean 2>/dev/null || true
-	@rm -f $(OUT_DIR)/motion_detect $(OUT_DIR)/motion_detect_v4l2 $(OUT_DIR)/motion_recorder $(OUT_DIR)/sync_probe $(OUT_DIR)/my_cam_test $(OUT_DIR)/edgeeye_cam $(OUT_DIR)/ai_event_log 2>/dev/null || true
+	@rm -f $(OUT_DIR)/motion_detect $(OUT_DIR)/motion_detect_v4l2 $(OUT_DIR)/motion_recorder $(OUT_DIR)/sync_probe $(OUT_DIR)/my_cam_test $(OUT_DIR)/edgeeye_cam $(OUT_DIR)/ai_event_log $(OUT_DIR)/ai_grab_frame 2>/dev/null || true
 	@rm -rf $(OUT_DIR)/stream 2>/dev/null || true
