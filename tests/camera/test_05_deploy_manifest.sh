@@ -34,7 +34,9 @@ for s in \
 	start_my_cam_rtsp.sh \
 	stop_my_cam_rtsp.sh \
 	preview_my_cam_rtsp_mac.sh \
-	my_cam_test_common.sh
+	my_cam_test_common.sh \
+	setup_wifi_board.sh \
+	check_wifi_board.sh
 do
 	assert_grep_file "$s" "$DEPLOY"
 	assert_file "$ROOT/scripts/$s"

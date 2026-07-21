@@ -1,0 +1,14 @@
+# Duo S WiFi 配置模板 — 复制到板上 /etc/wpa_supplicant.conf 后改 ssid/psk
+# 勿把真实密码提交进 git
+#
+# 官方参考：https://milkv.io/docs/duo/getting-started/duos
+
+ctrl_interface=/var/run/wpa_supplicant
+ap_scan=1
+update_config=1
+
+network={
+	ssid="YOUR_WIFI_SSID"
+	psk="YOUR_WIFI_PASSWORD"
+	key_mgmt=WPA-PSK
+}

@@ -82,6 +82,7 @@ ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | 新手上手 |
 | [docs/HOME_USER_GUIDE.md](docs/HOME_USER_GUIDE.md) | 家用说明 |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | 架构、ffmpeg、双摄技巧 |
+| [docs/WIFI.md](docs/WIFI.md) | Duo S WiFi 配置与验证 |
 | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | 当前进度 |
 | [docs/HARDWARE_NOTES.md](docs/HARDWARE_NOTES.md) | 板级硬件 |
 | [apps/camera/README.md](apps/camera/README.md) | edgeeye_cam 开发 |

@@ -154,6 +154,7 @@ tail -f /tmp/edgeeye_stack.log
 | 双摄第二路黑屏 | `reboot` 后 `./start_my_cam_rtsp.sh dual` |
 | 浏览器无快照 | 板端需 ffmpeg；或只用 RTSP |
 | 单摄切双摄失败 | reboot 或 `start_my_cam_rtsp.sh dual --reboot` |
+| 板子要上外网 | 见 [WIFI.md](./WIFI.md)：`setup_wifi_board.sh` + `check_wifi_board.sh` |
 
 ## 日志位置
 
