@@ -135,6 +135,18 @@ for p in motion_recorder; do
     fi
 done
 
+if [ "${EDGEEYE_AI:-0}" = "1" ]; then
+    if [ -f /tmp/ai_person_detect.pid ] && kill -0 "$(cat /tmp/ai_person_detect.pid)" 2>/dev/null; then
+        check "ai_person_detect running (ai=1)" 1
+    elif pgrep -f 'ai_person_detect.sh --watch' >/dev/null 2>&1; then
+        check "ai_person_detect running (ai=1)" 1
+    else
+        check "ai_person_detect running (ai=1)" 0
+    fi
+else
+    skip "ai_person_detect (ai=0)"
+fi
+
 CLIP_DIR="${CLIP_DIR:-/mnt/sd/clips}"
 if [ ! -d "$CLIP_DIR" ]; then
     CLIP_DIR=/mnt/data/clips

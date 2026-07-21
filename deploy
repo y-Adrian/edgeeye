@@ -53,6 +53,7 @@ for s in \
 	setup_wifi_board.sh check_wifi_board.sh check_lan_live_board.sh \
 	check_ai_event_log_board.sh check_ai_grab_frame_board.sh \
 	check_ai_person_detect_board.sh check_ai_person_record_board.sh \
+	check_ai_person_watch_board.sh \
 	ai_person_detect.sh install_tdl_libs_board.sh \
 	test_my_cam_test.sh test_my_cam_test_phase.sh \
 	test_my_cam_test_phase3.sh test_my_cam_test_phase4.sh test_my_cam_test_phase5.sh \

@@ -20,6 +20,7 @@
 | 3 | AI 取帧通路（`apps/ai/ai_grab_frame`，RTSP→JPEG） | ✅ |
 | 4 | 板端人检测（`ai_person_detect.sh` + MobileDet pedestrian）→ 写日志 | ✅ |
 | 5 | 检测触发录像（`ai_person_detect.sh --record`） | ✅ |
+| 6 | 循环检测 + cooldown（`--watch`）；`ai=1` 接入产品栈 | ✅ |
 
 ### 步骤 2 用法
 
@@ -66,6 +67,22 @@ tail -1 /mnt/sd/events/events.ndjson
 ls /mnt/sd/clips/   # 或 /mnt/data/clips/
 
 ./scripts/check_ai_person_record_board.sh
+```
+
+### 步骤 6 用法
+
+```bash
+# 循环：无人按 interval 轮询；检出后写日志/录像并 cooldown
+./ai_person_detect.sh --watch --interval 5 --cooldown 60 --record
+
+# 有限轮次（验收）
+./ai_person_detect.sh --watch --max-rounds 2 --interval 1
+
+# 产品栈：edgeeye_cam.conf 设 ai=1（默认 ai_record=1），再
+# ./stop_edgeeye_stack.sh && ./run_edgeeye_stack.sh
+# 后台 pid：/tmp/ai_person_detect.pid
+
+./scripts/check_ai_person_watch_board.sh
 ```
 
 ## 板上已具备的 AI 资产（摸底）

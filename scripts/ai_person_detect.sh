@@ -11,8 +11,9 @@
 #   ./ai_person_detect.sh --dry-run
 #   ./ai_person_detect.sh --once
 #   ./ai_person_detect.sh --once --record --clip-sec 15
-#   ./ai_person_detect.sh --once --simulate-person --record   # 无人时验录像通路
-#   ./ai_person_detect.sh --once --record --log-dir /mnt/data/events
+#   ./ai_person_detect.sh --watch --interval 5 --cooldown 60 --record
+#   ./ai_person_detect.sh --watch --max-rounds 2 --interval 1
+#   ./ai_person_detect.sh --once --simulate-person --record
 set -e
 
 BOARD_DIR="${BOARD_DIR:-/root}"
@@ -29,15 +30,19 @@ WIDTH="${AI_FRAME_W:-448}"
 HEIGHT="${AI_FRAME_H:-448}"
 CLIP_SEC="${AI_CLIP_SEC:-15}"
 CLIP_DIR="${CLIP_DIR:-}"
+INTERVAL="${AI_INTERVAL_SEC:-5}"
+COOLDOWN="${AI_COOLDOWN_SEC:-60}"
+MAX_ROUNDS=0
 DRY=0
 ONCE=0
+WATCH=0
 DO_RECORD=0
 SIMULATE=0
 
 export LD_LIBRARY_PATH="/mnt/system/lib:/mnt/system/usr/lib:/mnt/system/usr/lib/3rd:${LD_LIBRARY_PATH:-}"
 
 usage() {
-	sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
 	exit 1
 }
 
@@ -57,6 +62,7 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 	--dry-run) DRY=1; shift ;;
 	--once) ONCE=1; shift ;;
+	--watch) WATCH=1; shift ;;
 	--record) DO_RECORD=1; shift ;;
 	--simulate-person) SIMULATE=1; shift ;;
 	--clip-sec) CLIP_SEC="$2"; shift 2 ;;
@@ -65,6 +71,9 @@ while [ $# -gt 0 ]; do
 	--url) URL="$2"; shift 2 ;;
 	--frame) FRAME="$2"; shift 2 ;;
 	--model) MODEL_PATH="$2"; shift 2 ;;
+	--interval) INTERVAL="$2"; shift 2 ;;
+	--cooldown) COOLDOWN="$2"; shift 2 ;;
+	--max-rounds) MAX_ROUNDS="$2"; shift 2 ;;
 	-h|--help) usage ;;
 	*) echo "unknown: $1" >&2; usage ;;
 	esac
@@ -78,6 +87,7 @@ if [ "$DRY" = "1" ]; then
 	echo "  frame=$FRAME"
 	echo "  url=$URL"
 	echo "  record=$DO_RECORD clip_sec=$CLIP_SEC clip_dir=$(resolve_clip_dir)"
+	echo "  watch=$WATCH interval=$INTERVAL cooldown=$COOLDOWN max_rounds=$MAX_ROUNDS"
 	[ -x "$GRAB" ] || { echo "missing $GRAB"; exit 1; }
 	[ -x "$LOGBIN" ] || { echo "missing $LOGBIN"; exit 1; }
 	[ -x "$SAMPLE" ] || { echo "missing $SAMPLE"; exit 1; }
@@ -92,7 +102,7 @@ if [ "$DRY" = "1" ]; then
 	exit 0
 fi
 
-[ "$ONCE" = "1" ] || usage
+[ "$ONCE" = "1" ] || [ "$WATCH" = "1" ] || usage
 
 [ -x "$GRAB" ] || { echo "missing $GRAB"; exit 1; }
 
@@ -129,56 +139,92 @@ write_event_and_maybe_record() {
 			echo "saved: $OUT"
 		else
 			echo "WARN: cannot record — no record_clip.sh / ffmpeg"
-			exit 1
+			return 1
 		fi
 	fi
+	return 0
 }
 
-if [ "$SIMULATE" = "1" ]; then
-	echo "ai_person_detect: SIMULATE person (skip model)"
-	write_event_and_maybe_record "0.9000" "simulate"
-	exit 0
+# HIT=1 时已写事件/录像；HIT=0 无人；非 0 返回码表示检测失败
+run_one_round() {
+	HIT=0
+	if [ "$SIMULATE" = "1" ]; then
+		echo "ai_person_detect: SIMULATE person (skip model)"
+		write_event_and_maybe_record "0.9000" "simulate" || return 1
+		HIT=1
+		# 循环里只模拟首轮，避免一直假阳性
+		SIMULATE=0
+		return 0
+	fi
+
+	[ -x "$SAMPLE" ] || { echo "missing $SAMPLE"; return 1; }
+	[ -f "$MODEL_PATH" ] || { echo "missing $MODEL_PATH"; return 1; }
+
+	echo "ai_person_detect: grab $URL -> $FRAME (${WIDTH}x${HEIGHT})"
+	"$GRAB" --once --url "$URL" --out "$FRAME" --width "$WIDTH" --height "$HEIGHT"
+
+	echo "ai_person_detect: run $SAMPLE"
+	DET_LOG=/tmp/edgeeye_ai_det.log
+	set +e
+	"$SAMPLE" "$MODEL_NAME" "$MODEL_PATH" "$FRAME" >"$DET_LOG" 2>&1
+	DET_RC=$?
+	set -e
+	grep -vE '^(found not named|parse |minlevel:)' "$DET_LOG" || cat "$DET_LOG"
+
+	OBJNUM=$(grep -E '^objnum: ' "$DET_LOG" | tail -1 | awk '{print $2}')
+	[ -n "$OBJNUM" ] || OBJNUM=0
+
+	echo "ai_person_detect: objnum=$OBJNUM rc=$DET_RC"
+
+	if [ "$DET_RC" -ne 0 ]; then
+		echo "ai_person_detect: detection failed"
+		return "$DET_RC"
+	fi
+
+	if [ "$OBJNUM" -gt 0 ] 2>/dev/null; then
+		SCORE=$(grep -E '^boxes=' "$DET_LOG" | tail -1 | sed 's/^boxes=//' | tr -d '[]' | \
+			awk -F',' '{
+				max=0
+				for (i=6; i<=NF; i+=6) {
+					s=$i+0
+					if (s>max) max=s
+				}
+				if (max<=0) max=0.5
+				printf "%.4f", max
+			}')
+		[ -n "$SCORE" ] || SCORE="0.5000"
+		write_event_and_maybe_record "$SCORE" "detect" || return 1
+		HIT=1
+	else
+		echo "ai_person_detect: no person in frame (no event/record)"
+		HIT=0
+	fi
+	return 0
+}
+
+if [ "$ONCE" = "1" ]; then
+	run_one_round
+	exit $?
 fi
 
-[ -x "$SAMPLE" ] || { echo "missing $SAMPLE"; exit 1; }
-[ -f "$MODEL_PATH" ] || { echo "missing $MODEL_PATH"; exit 1; }
+# --watch
+ROUND=0
+echo "ai_person_detect: watch start interval=${INTERVAL}s cooldown=${COOLDOWN}s record=$DO_RECORD max_rounds=$MAX_ROUNDS"
+while true; do
+	ROUND=$((ROUND + 1))
+	echo "ai_person_detect: ---- round $ROUND ----"
+	if ! run_one_round; then
+		echo "ai_person_detect: round failed, sleep ${INTERVAL}s then retry"
+		sleep "$INTERVAL"
+	elif [ "$HIT" = "1" ]; then
+		echo "ai_person_detect: hit — cooldown ${COOLDOWN}s"
+		sleep "$COOLDOWN"
+	else
+		sleep "$INTERVAL"
+	fi
 
-echo "ai_person_detect: grab $URL -> $FRAME (${WIDTH}x${HEIGHT})"
-"$GRAB" --once --url "$URL" --out "$FRAME" --width "$WIDTH" --height "$HEIGHT"
-
-echo "ai_person_detect: run $SAMPLE"
-DET_LOG=/tmp/edgeeye_ai_det.log
-set +e
-"$SAMPLE" "$MODEL_NAME" "$MODEL_PATH" "$FRAME" >"$DET_LOG" 2>&1
-DET_RC=$?
-set -e
-grep -vE '^(found not named|parse |minlevel:)' "$DET_LOG" || cat "$DET_LOG"
-
-OBJNUM=$(grep -E '^objnum: ' "$DET_LOG" | tail -1 | awk '{print $2}')
-[ -n "$OBJNUM" ] || OBJNUM=0
-
-echo "ai_person_detect: objnum=$OBJNUM rc=$DET_RC"
-
-if [ "$DET_RC" -ne 0 ]; then
-	echo "ai_person_detect: detection failed"
-	exit "$DET_RC"
-fi
-
-if [ "$OBJNUM" -gt 0 ] 2>/dev/null; then
-	SCORE=$(grep -E '^boxes=' "$DET_LOG" | tail -1 | sed 's/^boxes=//' | tr -d '[]' | \
-		awk -F',' '{
-			max=0
-			for (i=6; i<=NF; i+=6) {
-				s=$i+0
-				if (s>max) max=s
-			}
-			if (max<=0) max=0.5
-			printf "%.4f", max
-		}')
-	[ -n "$SCORE" ] || SCORE="0.5000"
-	write_event_and_maybe_record "$SCORE" "detect"
-else
-	echo "ai_person_detect: no person in frame (no event/record)"
-fi
-
-exit 0
+	if [ "$MAX_ROUNDS" -gt 0 ] 2>/dev/null && [ "$ROUND" -ge "$MAX_ROUNDS" ]; then
+		echo "ai_person_detect: max-rounds=$MAX_ROUNDS reached, exit"
+		exit 0
+	fi
+done

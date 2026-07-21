@@ -46,7 +46,8 @@ for t in \
 	"$DIR/test_13_ai_event_log.sh" \
 	"$DIR/test_14_ai_grab_frame.sh" \
 	"$DIR/test_15_ai_person_detect.sh" \
-	"$DIR/test_16_ai_person_record.sh"
+	"$DIR/test_16_ai_person_record.sh" \
+	"$DIR/test_17_ai_person_watch.sh"
 do
 	run_one "$t"
 done
