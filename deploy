@@ -51,6 +51,7 @@ for s in \
 	my_cam_test_common.sh record_clip.sh media_tools.sh stop_motion_recorder.sh \
 	build_ffmpeg_cli.sh install_ffmpeg_cli_board.sh install_ffprobe_board.sh \
 	setup_wifi_board.sh check_wifi_board.sh check_lan_live_board.sh \
+	check_ai_event_log_board.sh \
 	test_my_cam_test.sh test_my_cam_test_phase.sh \
 	test_my_cam_test_phase3.sh test_my_cam_test_phase4.sh test_my_cam_test_phase5.sh \
 	test_my_cam_test_phase6.sh test_my_cam_test_phase7.sh test_my_cam_test_phase8.sh \

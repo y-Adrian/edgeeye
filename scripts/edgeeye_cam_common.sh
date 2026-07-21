@@ -4,7 +4,7 @@ EDGEEYE_CONF="${EDGEEYE_CONF:-/root/edgeeye_cam.conf}"
 BOARD_DIR="${BOARD_DIR:-/root}"
 
 edgeeye_cfg_default() {
-	EDGEEYE_MODE="${EDGEEYE_MODE:-dual}"
+	EDGEEYE_MODE="${EDGEEYE_MODE:-gc2083}"
 	EDGEEYE_PORT="${EDGEEYE_PORT:-8554}"
 	EDGEEYE_RES="${EDGEEYE_RES:-720p}"
 	EDGEEYE_BOOT_DELAY="${EDGEEYE_BOOT_DELAY:-8}"
@@ -21,6 +21,9 @@ edgeeye_cfg_default() {
 	EDGEEYE_WEB_LIVE="${EDGEEYE_WEB_LIVE:-hls}"
 	EDGEEYE_SNAPSHOT_SEC="${EDGEEYE_SNAPSHOT_SEC:-3}"
 	EDGEEYE_AUTOSTART="${EDGEEYE_AUTOSTART:-0}"
+	EDGEEYE_AI="${EDGEEYE_AI:-0}"
+	EDGEEYE_AI_LOG_DIR="${EDGEEYE_AI_LOG_DIR:-}"
+	EDGEEYE_AI_CLASSES="${EDGEEYE_AI_CLASSES:-person}"
 }
 
 edgeeye_cfg_set_key() {
@@ -70,6 +73,9 @@ edgeeye_cfg_set_key() {
 		;;
 	snapshot_sec) EDGEEYE_SNAPSHOT_SEC="$val" ;;
 	autostart) EDGEEYE_AUTOSTART="$val" ;;
+	ai) EDGEEYE_AI="$val" ;;
+	ai_log_dir) EDGEEYE_AI_LOG_DIR="$val" ;;
+	ai_classes) EDGEEYE_AI_CLASSES="$val" ;;
 	esac
 }
 

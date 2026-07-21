@@ -24,6 +24,7 @@
 | LT-07 | `test_07_stream_configs.sh` | 混搭双摄 sensor ini 与 `make` 部署包 |
 | LT-11 | `test_11_wifi_docs.sh` | WiFi 文档/脚本/示例 conf 存在性 |
 | LT-12 | `test_12_lite_gc2083_config.sh` | Lite 默认 `mode=gc2083`、AI 路线文档 |
+| LT-13 | `test_13_ai_event_log.sh` | `ai_event_log` 源码与 conf `ai=` 占位 |
 
 ### 运行
 
