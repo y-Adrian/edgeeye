@@ -102,6 +102,21 @@ edgeeye_rtsp_port_listening() {
 }
 
 edgeeye_board_ip() {
+	# 优先 wlan0（同 WiFi 局域网访问）；其次 usb0；再回退文档默认
+	ip=$(ip -4 addr show wlan0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -1)
+	if [ -n "$ip" ]; then
+		printf '%s' "$ip"
+		return 0
+	fi
+	ip=$(ip -4 addr show usb0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -1)
+	if [ -n "$ip" ]; then
+		printf '%s' "$ip"
+		return 0
+	fi
+	printf '%s' "192.168.42.1"
+}
+
+edgeeye_board_ip_usb() {
 	ip=$(ip -4 addr show usb0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -1)
 	if [ -n "$ip" ]; then
 		printf '%s' "$ip"
