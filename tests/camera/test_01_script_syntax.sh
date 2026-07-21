@@ -16,6 +16,7 @@ for f in \
 	"$ROOT/scripts/start_my_cam_rtsp.sh" \
 	"$ROOT/scripts/stop_my_cam_rtsp.sh" \
 	"$ROOT/scripts/serve_edgeeye_web.sh" \
+	"$ROOT/scripts/edgeeye_hls.sh" \
 	"$ROOT/scripts/edgeeye_snapshots.sh" \
 	"$ROOT/scripts/health_check.sh" \
 	"$ROOT/scripts/install_autostart.sh" \

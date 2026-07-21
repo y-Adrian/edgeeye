@@ -12,7 +12,7 @@
 | 1080p / 720p / 480p | ✅ |
 | 配置文件 + 开机自启 | ✅ |
 | Web 快照页 | ✅（需 ffmpeg） |
-| 动检录像 | 可选（`record=1`） |
+| 动检录像 | ✅ RTSP 画面差分（`motion_recorder`）；可选 GPIO/PIR（`debris.ko`） |
 | 浏览器 RTSP 直播 | 未做（用 ffplay/VLC） |
 
 ## 开发环境

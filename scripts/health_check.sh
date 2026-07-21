@@ -53,7 +53,7 @@ rtsp_probe_url() {
 }
 
 echo "=== edgeeye health check $(date) ==="
-echo "       config mode=${EDGEEYE_MODE:-?} port=${EDGEEYE_PORT:-8554} res=${EDGEEYE_RES:-?}"
+echo "       config mode=${EDGEEYE_MODE:-?} port=${EDGEEYE_PORT:-8554} res=${EDGEEYE_RES:-?} web=${EDGEEYE_WEB:-0} record=${EDGEEYE_RECORD:-0} autostart=${EDGEEYE_AUTOSTART:-0}"
 
 # ── edgeeye_cam（产品栈）────────────────────────────────────
 if edgeeye_cam_alive 2>/dev/null; then
@@ -121,11 +121,17 @@ else
     skip "ffmpeg (PC 侧 RTSP 录制即可)"
 fi
 
-for p in motion_detect; do
-    if proc_alive "$p"; then
+for p in motion_recorder; do
+    if [ "${EDGEEYE_RECORD:-0}" = "1" ]; then
+        if proc_alive "$p"; then
+            check "$p running (record=1)" 1
+        else
+            check "$p running (record=1)" 0
+        fi
+    elif proc_alive "$p"; then
         check "$p running" 1
     else
-        skip "$p (未启用)"
+        skip "$p (record=0)"
     fi
 done
 
@@ -154,6 +160,20 @@ done
 if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
     t=$(cat /sys/class/thermal/thermal_zone0/temp)
     echo "       thermal_zone0: $t m°C"
+fi
+
+if [ "${EDGEEYE_AUTOSTART:-0}" = "1" ]; then
+    if [ -f /etc/init.d/S99edgeeye_cam ]; then
+        check "autostart init.d installed" 1
+    else
+        check "autostart init.d installed (conf autostart=1)" 0
+    fi
+else
+    if [ -f /etc/init.d/S99edgeeye_cam ]; then
+        skip "autostart init.d present but conf autostart=0 — run install_autostart.sh sync"
+    else
+        skip "autostart off (autostart=0)"
+    fi
 fi
 
 WEB_PORT="${EDGEEYE_WEB_PORT:-8080}"

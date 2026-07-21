@@ -1,33 +1,48 @@
 #!/bin/sh
-# install_ffmpeg_cli_board.sh — 部署静态 ffmpeg 到板子
+# install_ffmpeg_cli_board.sh — 部署静态 ffmpeg 到板子 /mnt/data/bin/ffmpeg
 #
-# 前提：./scripts/build_ffmpeg_cli.sh 已生成 /tmp/debris_ffmpeg_out/bin/ffmpeg
+# 优先使用 output/ffmpeg-riscv64-static（build_ffmpeg_cli.sh 写入，与 ./deploy 同源）
 set -e
 
 BOARD_IP="${BOARD_IP:-192.168.42.1}"
 BOARD_USER="${BOARD_USER:-root}"
-FFMPEG="${FFMPEG_BIN:-/tmp/debris_ffmpeg_out/bin/ffmpeg}"
-if [ ! -x "$FFMPEG" ]; then
-	FFMPEG="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)/output/ffmpeg-riscv64-static"
+ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+FFMPEG="${FFMPEG_BIN:-}"
+
+if [ -z "$FFMPEG" ]; then
+	if [ -x "$ROOT/output/ffmpeg-riscv64-static" ]; then
+		FFMPEG="$ROOT/output/ffmpeg-riscv64-static"
+	elif [ -x /tmp/debris_ffmpeg_out/bin/ffmpeg ]; then
+		FFMPEG=/tmp/debris_ffmpeg_out/bin/ffmpeg
+	fi
 fi
 
 if [ ! -x "$FFMPEG" ]; then
-    echo "missing ffmpeg — run build_ffmpeg_cli.sh in Docker first"
-    echo "  or set FFMPEG_BIN=/path/to/ffmpeg-riscv64-static"
-    exit 1
+	echo "missing ffmpeg — run build_ffmpeg_cli.sh in Docker first" >&2
+	echo "  expect: $ROOT/output/ffmpeg-riscv64-static" >&2
+	exit 1
 fi
 
+if ! "$FFMPEG" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'; then
+	echo "ERROR: $FFMPEG has no HLS muxer (old build?)" >&2
+	echo "  rm -rf /tmp/debris_ffmpeg_out /tmp/ffmpeg-6.1.1 output/ffmpeg-riscv64-static" >&2
+	echo "  ./scripts/build_ffmpeg_cli.sh" >&2
+	exit 1
+fi
+
+echo "install $FFMPEG -> board:/mnt/data/bin/ffmpeg"
 file "$FFMPEG"
 ssh "$BOARD_USER@$BOARD_IP" "mkdir -p /mnt/data/bin"
 scp "$FFMPEG" "$BOARD_USER@$BOARD_IP:/mnt/data/bin/ffmpeg"
 ssh "$BOARD_USER@$BOARD_IP" "chmod +x /mnt/data/bin/ffmpeg"
 
+ssh "$BOARD_USER@$BOARD_IP" \
+	'/mnt/data/bin/ffmpeg -hide_banner -muxers 2>/dev/null | grep hls || { echo "board: ffmpeg still missing HLS"; exit 1; }'
+
 cat <<'EOF'
 
-Board test:
-  /mnt/data/bin/ffmpeg -version
-  ./record_clip.sh 10 cam0
-
-ffplay 仍无板载版本 — PC 预览：
-  ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0
+Board OK. Next:
+  ./stop_edgeeye_stack.sh && ./run_edgeeye_stack.sh
+  cat /root/web/status.json    # expect "web_live":"hls"
+  ls /root/web/hls/
 EOF

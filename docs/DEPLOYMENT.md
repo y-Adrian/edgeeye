@@ -52,21 +52,27 @@ ffmpeg -rtsp_transport tcp -i rtsp://192.168.42.1:8554/cam0 -c copy -t 30 clip.m
 
 Mac 一键：`./scripts/preview_my_cam_rtsp_mac.sh --mode dual --cam both --start-board`
 
-## Board ffmpeg (snapshots / recording)
+## Board ffmpeg (snapshots / recording / HLS)
 
 Stock rootfs has no `ffmpeg` CLI. Cross-compile in Docker:
 
 ```bash
 source scripts/envsetup.sh
-./scripts/build_ffmpeg_cli.sh          # 约 10–20 分钟
-./scripts/install_ffmpeg_cli_board.sh
+./scripts/build_ffmpeg_cli.sh          # 约 10–20 分钟 → output/ffmpeg-riscv64-static
+./deploy                               # 同步到 /mnt/data/bin/ffmpeg
+# 或单独：./scripts/install_ffmpeg_cli_board.sh
 ```
 
+**路径说明：** 编译产物写入仓库 `output/ffmpeg-riscv64-static`（不再只在 Docker `/tmp`）。`./deploy` 会把该文件装到板子 **`/mnt/data/bin/ffmpeg`**（不会误用 `/root/` 下旧副本）。
+
 **`rev8` / `.option arch,+zbb` 编译失败**：Duo S 工具链不支持 RISC-V Zbb，`build_ffmpeg_cli.sh` 已加 `--disable-asm --disable-rvv`。
+
+浏览器双路直播：`web=1` + `web_live=hls` → `http://板子IP:8080/`（见 `web/README.md`）。
 
 可选：`./scripts/install_ffprobe_board.sh` 改善 `health_check` RTSP 探测。
 
 ## Dual-camera tips
 
 - 单摄切双摄失败时：**reboot** 后再 `./run_edgeeye_stack.sh`
-- 卡顿时设 `res=480p`，或 `web=0` 关闭快照（避免 ffmpeg 抢 RTSP）
+- 卡顿时设 `res=480p`，或 `web=0` / `record=0`（减少 ffmpeg 抢 RTSP）
+- 开 HLS 直播时建议 **关动检**（`record=0`）
