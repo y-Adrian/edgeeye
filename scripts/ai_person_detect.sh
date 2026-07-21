@@ -11,7 +11,7 @@
 #   ./ai_person_detect.sh --dry-run
 #   ./ai_person_detect.sh --once
 #   ./ai_person_detect.sh --once --record --clip-sec 15
-#   ./ai_person_detect.sh --watch --interval 5 --cooldown 60 --record
+#   ./ai_person_detect.sh --watch --interval 20 --cooldown 60
 #   ./ai_person_detect.sh --watch --max-rounds 2 --interval 1
 #   ./ai_person_detect.sh --once --simulate-person --record
 set -e
@@ -30,7 +30,7 @@ WIDTH="${AI_FRAME_W:-448}"
 HEIGHT="${AI_FRAME_H:-448}"
 CLIP_SEC="${AI_CLIP_SEC:-15}"
 CLIP_DIR="${CLIP_DIR:-}"
-INTERVAL="${AI_INTERVAL_SEC:-5}"
+INTERVAL="${AI_INTERVAL_SEC:-20}"
 COOLDOWN="${AI_COOLDOWN_SEC:-60}"
 MAX_ROUNDS=0
 DRY=0

@@ -24,8 +24,8 @@ edgeeye_cfg_default() {
 	EDGEEYE_AI="${EDGEEYE_AI:-0}"
 	EDGEEYE_AI_LOG_DIR="${EDGEEYE_AI_LOG_DIR:-}"
 	EDGEEYE_AI_CLASSES="${EDGEEYE_AI_CLASSES:-person}"
-	EDGEEYE_AI_INTERVAL_SEC="${EDGEEYE_AI_INTERVAL_SEC:-5}"
-	EDGEEYE_AI_RECORD="${EDGEEYE_AI_RECORD:-1}"
+	EDGEEYE_AI_INTERVAL_SEC="${EDGEEYE_AI_INTERVAL_SEC:-20}"
+	EDGEEYE_AI_RECORD="${EDGEEYE_AI_RECORD:-0}"
 }
 
 edgeeye_cfg_set_key() {
@@ -347,9 +347,9 @@ edgeeye_start_ai() {
 		return 0
 	fi
 
-	AI_ARGS="--watch --interval ${EDGEEYE_AI_INTERVAL_SEC:-5} --cooldown ${EDGEEYE_COOLDOWN_SEC:-60}"
+	AI_ARGS="--watch --interval ${EDGEEYE_AI_INTERVAL_SEC:-20} --cooldown ${EDGEEYE_COOLDOWN_SEC:-60}"
 	AI_ARGS="$AI_ARGS --clip-sec ${EDGEEYE_CLIP_SEC:-30}"
-	if [ "${EDGEEYE_AI_RECORD:-1}" = "1" ]; then
+	if [ "${EDGEEYE_AI_RECORD:-0}" = "1" ]; then
 		AI_ARGS="$AI_ARGS --record"
 	fi
 	if [ -n "$EDGEEYE_AI_LOG_DIR" ]; then

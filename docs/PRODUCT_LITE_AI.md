@@ -72,18 +72,32 @@ ls /mnt/sd/clips/   # 或 /mnt/data/clips/
 ### 步骤 6 用法
 
 ```bash
-# 循环：无人按 interval 轮询；检出后写日志/录像并 cooldown
-./ai_person_detect.sh --watch --interval 5 --cooldown 60 --record
+# 循环：无人按 interval 轮询；检出后写日志并 cooldown
+# 默认 interval=20、栈上 ai_record=0，减轻与 RTSP 预览抢流导致的越跑越卡
+./ai_person_detect.sh --watch --interval 20 --cooldown 60
+# 需要检出录像时再加：--record（或 conf ai_record=1）
 
 # 有限轮次（验收）
 ./ai_person_detect.sh --watch --max-rounds 2 --interval 1
 
-# 产品栈：edgeeye_cam.conf 设 ai=1（默认 ai_record=1），再
+# 产品栈：edgeeye_cam.conf 设 ai=1，再
 # ./stop_edgeeye_stack.sh && ./run_edgeeye_stack.sh
 # 后台 pid：/tmp/ai_person_detect.pid
 
 ./scripts/check_ai_person_watch_board.sh
 ```
+
+### 预览卡顿（当前阶段建议）
+
+AI 取帧仍走同一路 RTSP，轮询过密或检出后 ffmpeg 录像会拖垮 ISP/VENC。默认已：
+
+| 项 | 默认 | 说明 |
+|----|------|------|
+| `ai_interval_sec` | **20** | 少抢流 |
+| `ai_record` | **0** | 只写事件日志，不自动录像 |
+| 盯画面调试 | 临时 `ai=0` | 或只用 `./ai_person_detect.sh --once` |
+
+需要「检出就录像」时再设 `ai_record=1`，并建议 `ai_interval_sec≥15`。
 
 ## 板上已具备的 AI 资产（摸底）
 
