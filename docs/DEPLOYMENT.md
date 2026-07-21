@@ -76,3 +76,12 @@ source scripts/envsetup.sh
 - 单摄切双摄失败时：**reboot** 后再 `./run_edgeeye_stack.sh`
 - 卡顿时设 `res=480p`，或 `web=0` / `record=0`（减少 ffmpeg 抢 RTSP）
 - 开 HLS 直播时建议 **关动检**（`record=0`）
+
+## WiFi（板子上网）
+
+家用 WPA-PSK 配置与验证见 **[WIFI.md](./WIFI.md)**。
+
+```bash
+./scripts/setup_wifi_board.sh --ssid 'MyWiFi' --psk 'password'
+./scripts/check_wifi_board.sh
+```

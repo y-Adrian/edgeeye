@@ -25,6 +25,7 @@
 2. 启动容器并挂载工作区（见 DEVELOPMENT.md §4）
 3. 容器内 `cd edgeeye-duos && source scripts/envsetup.sh`
 4. `make app && ./deploy`
+5. （可选）板子上网：[WIFI.md](./WIFI.md)
 
 ## 五分钟上手
 
