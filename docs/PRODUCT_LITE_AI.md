@@ -18,7 +18,7 @@
 | 1 | 单摄 GC2083 产品基线（默认 conf / 文档） | ✅ |
 | 2 | AI 事件本地日志骨架（`apps/ai/ai_event_log`，无模型） | ✅ |
 | 3 | AI 取帧通路（`apps/ai/ai_grab_frame`，RTSP→JPEG） | ✅ |
-| 4 | 板端人检测（TPU / `mobiledet` 行人模型等）→ 写日志 | 待做 |
+| 4 | 板端人检测（`ai_person_detect.sh` + MobileDet pedestrian）→ 写日志 | ✅ |
 | 5 | （可选）检测触发录像，与 `motion_recorder` 衔接 | 待做 |
 
 ### 步骤 2 用法
@@ -40,6 +40,21 @@ tail -1 /mnt/sd/events/events.ndjson
 ```
 
 默认分辨率 **448×448**，对齐板上 `mobiledetv2-pedestrian-*-448.cvimodel`。
+
+### 步骤 4 用法
+
+```bash
+# 宿主机一次（缺 libcvi_tdl_app.so 时）
+./scripts/install_tdl_libs_board.sh
+
+# 板上（需 cam0 RTSP）
+./ai_person_detect.sh --dry-run
+./ai_person_detect.sh --once
+# 有人时写入 events.ndjson，source=detect
+./scripts/check_ai_person_detect_board.sh
+```
+
+可与 `edgeeye_cam` 同时运行（JPEG 检测，不抢 VI）。
 
 ## 板上已具备的 AI 资产（摸底）
 

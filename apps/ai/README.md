@@ -22,4 +22,4 @@ tail -1 /mnt/sd/events/events.ndjson   # 或 /mnt/data/events/
 {"ts":1710000000,"class":"person","score":0.9100,"source":"inject","cam":"cam0"}
 ```
 
-后续步骤 3/4：`ai_grab_frame` 取帧 → 检测进程以 `source=detect` 写入同一事件文件。
+后续：`ai_grab_frame` 取帧 → `ai_person_detect.sh`（MobileDet）→ `ai_event_log`（`source=detect`）。
