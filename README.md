@@ -1,10 +1,13 @@
 # EdgeEye Duo S
 
-Milk-V Duo S 边缘双摄 RTSP 产品：`edgeeye_cam` 单摄/双摄直播，可选浏览器 HLS / 快照页与动检录像。
+Milk-V Duo S **EdgeEye Lite**：默认单摄 GC2083 RTSP，支持 TPU 人体检测、本地事件日志与可选检出录像。双摄、浏览器 HLS / 快照页和传统动检录像保留为开发选项。
 
 ## 能力
 
-- **双摄 RTSP**：`rtsp://192.168.42.1:8554/cam0`（GC2083）+ `cam1`（OV5647）
+- **Lite 单摄 RTSP**：默认 `rtsp://192.168.42.1:8554/cam0`（GC2083）
+- **人体检测**：MobileDet pedestrian，支持单次检测与后台循环
+- **本地 AI 事件**：NDJSON 日志；可选检出后录像
+- **双摄 RTSP（开发用）**：cam0（GC2083）+ cam1（OV5647）
 - **分辨率档位**：1080p / 720p / 480p
 - **开机自启**：`edgeeye_cam.conf` + `install_autostart.sh`
 - **浏览器双路直播**：`web=1` + `web_live=hls` → `http://192.168.42.1:8080/`（ffmpeg remux；可选 `snapshot`）
@@ -50,7 +53,7 @@ make app && ./deploy
 
 ## 板上快速开始
 
-编辑 `/root/edgeeye_cam.conf` 按需开关（默认 **web=0 record=0 autostart=0**）：
+编辑 `/root/edgeeye_cam.conf` 按需开关（默认 **ai=0 web=0 record=0 autostart=0**）：
 
 ```bash
 vi /root/edgeeye_cam.conf
@@ -61,10 +64,14 @@ vi /root/edgeeye_cam.conf
 | 想要 | conf 设置 |
 |------|-----------|
 | 仅 RTSP | `web=0 record=0 autostart=0`，手动 `./run_edgeeye_stack.sh` |
+| + 后台人体检测 | `ai=1 ai_interval_sec=20 ai_record=0`，重启栈 |
+| + 检出后录像 | `ai=1 ai_record=1`，建议保持 `ai_interval_sec≥15` |
 | + 浏览器双路 HLS | `web=1` `web_live=hls` `record=0`，重启栈 |
 | + JPEG 慢刷 | `web=1` `web_live=snapshot`，重启栈 |
 | + 动检录像 | `record=1`（默认 cam0），重启栈；勿与 HLS 同时大开 |
 | 上电自启 | `autostart=1`，`./install_autostart.sh` |
+
+AI 目前通过同一路 RTSP 抓取 448×448 检测帧。预览卡顿时先保持 `ai_record=0`、增大 `ai_interval_sec`；详细状态见 [docs/PRODUCT_LITE_AI.md](docs/PRODUCT_LITE_AI.md)。
 
 Mac 预览：
 
