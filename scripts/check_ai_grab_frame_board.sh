@@ -1,5 +1,5 @@
 #!/bin/sh
-# check_ai_grab_frame_board.sh — 板上验证 ai_grab_frame（需 cam0 RTSP）
+# check_ai_grab_frame_board.sh — 板上验证兼容 RTSP 取帧路径
 set -e
 
 BOARD_IP="${BOARD_IP:-192.168.42.1}"
@@ -26,8 +26,9 @@ fi
 
 OUT=/tmp/edgeeye_ai_frame_test.jpg
 rm -f "$OUT"
-"$BIN" --dry-run
-"$BIN" --once --url rtsp://127.0.0.1:8554/cam0 --out "$OUT" --width 448 --height 448
+"$BIN" --dry-run --source rtsp
+"$BIN" --once --source rtsp --url rtsp://127.0.0.1:8554/cam0 \
+	--out "$OUT" --width 448 --height 448
 test -f "$OUT"
 SZ=$(wc -c < "$OUT")
 test "$SZ" -gt 64

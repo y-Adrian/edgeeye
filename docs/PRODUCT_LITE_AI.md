@@ -21,6 +21,7 @@
 | 4 | 板端人检测（`ai_person_detect.sh` + MobileDet pedestrian）→ 写日志 | ✅ |
 | 5 | 检测触发录像（`ai_person_detect.sh --record`） | ✅ |
 | 6 | 循环检测 + cooldown（`--watch`）；`ai=1` 接入产品栈 | ✅ |
+| 7 | VPSS 按需直取 AI 帧，去掉第二个 RTSP 客户端/H.264 解码 | ✅ |
 
 ### 步骤 2 用法
 
@@ -87,9 +88,9 @@ ls /mnt/sd/clips/   # 或 /mnt/data/clips/
 ./scripts/check_ai_person_watch_board.sh
 ```
 
-### 预览卡顿（当前阶段建议）
+### 旧版 RTSP 取帧的预览卡顿
 
-AI 取帧仍走同一路 RTSP，轮询过密或检出后 ffmpeg 录像会拖垮 ISP/VENC。默认已：
+步骤 6 及更早版本通过同一路 RTSP 取帧；轮询过密或检出后 ffmpeg 录像会拖垮 ISP/VENC。步骤 7 改为 VPSS 按需直取；使用 `ai_frame_source=rtsp` 回退时仍建议：
 
 | 项 | 默认 | 说明 |
 |----|------|------|
@@ -98,6 +99,30 @@ AI 取帧仍走同一路 RTSP，轮询过密或检出后 ffmpeg 录像会拖垮 
 | 盯画面调试 | 临时 `ai=0` | 或只用 `./ai_person_detect.sh --once` |
 
 需要「检出就录像」时再设 `ai_record=1`，并建议 `ai_interval_sec≥15`。
+
+### 步骤 7 用法
+
+```bash
+# 产品栈 ai=1 且 ai_frame_source=vpss 时自动给 edgeeye_cam 加 --ai-direct
+./stop_edgeeye_stack.sh && ./run_edgeeye_stack.sh
+
+# 手工验证一次 VPSS 直取（不连接 rtsp://...）
+./ai_grab_frame --once --source vpss
+
+# Mac 侧板上验收
+./scripts/check_ai_direct_frame_board.sh
+```
+
+流程变为：
+
+```text
+VPSS ch0 --按请求短暂 Get/Release--> NV12 --本地 scale/JPEG--> MobileDet
+     └---------------------------> VENC/RTSP 预览
+```
+
+`ai_frame_source=rtsp` 保留为兼容/回退路径。
+
+板上验收结果：连续 3 次 VPSS 取帧后，cam0 在 3 秒内仍输出 **84 帧（1280×720）**；MobileDet 能读取直取生成的 448×448 JPEG。
 
 ## 板上已具备的 AI 资产（摸底）
 

@@ -11,7 +11,7 @@
 #   ./ai_person_detect.sh --dry-run
 #   ./ai_person_detect.sh --once
 #   ./ai_person_detect.sh --once --record --clip-sec 15
-#   ./ai_person_detect.sh --watch --interval 20 --cooldown 60
+#   ./ai_person_detect.sh --watch --interval 20 --cooldown 60 --frame-source vpss
 #   ./ai_person_detect.sh --watch --max-rounds 2 --interval 1
 #   ./ai_person_detect.sh --once --simulate-person --record
 set -e
@@ -24,6 +24,7 @@ SAMPLE="${SAMPLE_IMG_DET:-/mnt/system/usr/bin/ai/sample_img_det}"
 MODEL_NAME="mobiledetv2-pedestrian"
 MODEL_PATH="${AI_MODEL_PATH:-/mnt/cvimodel/mobiledetv2-pedestrian-d0-ls-448.cvimodel}"
 FRAME="${AI_FRAME_PATH:-/tmp/edgeeye_ai_frame.jpg}"
+FRAME_SOURCE="${AI_FRAME_SOURCE:-vpss}"
 LOG_DIR="${AI_LOG_DIR:-}"
 URL="${AI_RTSP_URL:-rtsp://127.0.0.1:8554/cam0}"
 WIDTH="${AI_FRAME_W:-448}"
@@ -70,6 +71,7 @@ while [ $# -gt 0 ]; do
 	--log-dir) LOG_DIR="$2"; shift 2 ;;
 	--url) URL="$2"; shift 2 ;;
 	--frame) FRAME="$2"; shift 2 ;;
+	--frame-source) FRAME_SOURCE="$2"; shift 2 ;;
 	--model) MODEL_PATH="$2"; shift 2 ;;
 	--interval) INTERVAL="$2"; shift 2 ;;
 	--cooldown) COOLDOWN="$2"; shift 2 ;;
@@ -79,12 +81,18 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+case "$FRAME_SOURCE" in
+vpss|rtsp) ;;
+*) echo "invalid frame source: $FRAME_SOURCE (use vpss|rtsp)" >&2; exit 1 ;;
+esac
+
 if [ "$DRY" = "1" ]; then
 	echo "ai_person_detect dry-run"
 	echo "  grab=$GRAB"
 	echo "  sample=$SAMPLE"
 	echo "  model=$MODEL_PATH"
 	echo "  frame=$FRAME"
+	echo "  frame_source=$FRAME_SOURCE"
 	echo "  url=$URL"
 	echo "  record=$DO_RECORD clip_sec=$CLIP_SEC clip_dir=$(resolve_clip_dir)"
 	echo "  watch=$WATCH interval=$INTERVAL cooldown=$COOLDOWN max_rounds=$MAX_ROUNDS"
@@ -160,8 +168,9 @@ run_one_round() {
 	[ -x "$SAMPLE" ] || { echo "missing $SAMPLE"; return 1; }
 	[ -f "$MODEL_PATH" ] || { echo "missing $MODEL_PATH"; return 1; }
 
-	echo "ai_person_detect: grab $URL -> $FRAME (${WIDTH}x${HEIGHT})"
-	"$GRAB" --once --url "$URL" --out "$FRAME" --width "$WIDTH" --height "$HEIGHT"
+	echo "ai_person_detect: grab source=$FRAME_SOURCE -> $FRAME (${WIDTH}x${HEIGHT})"
+	"$GRAB" --once --source "$FRAME_SOURCE" --url "$URL" --out "$FRAME" \
+		--width "$WIDTH" --height "$HEIGHT"
 
 	echo "ai_person_detect: run $SAMPLE"
 	DET_LOG=/tmp/edgeeye_ai_det.log

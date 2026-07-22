@@ -31,11 +31,11 @@ else
 	exit 1
 fi
 
-/root/ai_person_detect.sh --dry-run
+/root/ai_person_detect.sh --dry-run --frame-source rtsp
 LOGDIR=/tmp/edgeeye_ai_det_events
 rm -rf "$LOGDIR"
 # 检测通路：即使画面无人，sample 须成功；有人则写日志
-/root/ai_person_detect.sh --once --log-dir "$LOGDIR"
+/root/ai_person_detect.sh --once --frame-source rtsp --log-dir "$LOGDIR"
 test -f /tmp/edgeeye_ai_det.log
 grep -qE "^objnum: " /tmp/edgeeye_ai_det.log
 OBJ=$(grep -E "^objnum: " /tmp/edgeeye_ai_det.log | tail -1 | awk "{print \$2}")

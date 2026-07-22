@@ -24,7 +24,11 @@ static CVI_S32 rtsp_setup_single(void)
 
 	cam_output_res_effective(&stSrc, &stOut, &enOutPic);
 
-	s32Ret = cam_vpss_init_single(&stSrc, &stOut, 0);
+	/*
+	 * AI direct 需要 ch0 depth=1，GetChnFrame 才能与绑定到 VENC 的
+	 * 同一输出并行取得一帧；未启用时保持 depth=0，避免额外占用 VB。
+	 */
+	s32Ret = cam_vpss_init_single(&stSrc, &stOut, g_cam_ai_direct ? 1 : 0);
 	if (s32Ret != CVI_SUCCESS)
 		return s32Ret;
 

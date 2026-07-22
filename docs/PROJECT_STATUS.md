@@ -22,16 +22,17 @@ Milk-V Duo S **EdgeEye Lite**：单摄 **GC2083** 边缘节点；本地 RTSP + *
 - **AI 事件日志**：`events.ndjson`，真实检测事件标记 `source=detect`
 - **可选检出录像**：`--record` / `ai_record=1`
 - **产品栈 AI 开关**：`ai=1` 后台启动，支持轮询间隔与 cooldown
+- **AI VPSS 直取帧**：按需 `Get/ReleaseChnFrame`，不再建立第二个 RTSP 客户端
 
 ### 当前限制
 
-- AI 取帧仍通过 RTSP；轮询过密或同时录像会争用 ISP/VENC，导致预览掉帧
+- VPSS 帧仍需经 ffmpeg 从 NV12 缩放/编码为 JPEG，但已去掉 RTSP/H.264 解码开销
+- `ai_record=1` 仍会额外建立录像 RTSP 客户端，预览敏感场景建议保持关闭
 - 默认采用 `ai_interval_sec=20`、`ai_record=0` 降低争用
 - 当前是人体/行人检测，不是人脸识别或人脸检测
 
 ### 下一步
 
-- AI 直接复用 VI/VPSS 帧，去掉 RTSP 解码取帧
 - `ai=1` + `autostart=1` 家用长稳验收
 - 6h 长稳正式收口
 - 远程访问（Tailscale，可选）
@@ -60,6 +61,7 @@ record=0
 ai=0
 ai_interval_sec=20
 ai_record=0
+ai_frame_source=vpss
 ```
 
 完整 AI 状态与用法见 [PRODUCT_LITE_AI.md](./PRODUCT_LITE_AI.md)。

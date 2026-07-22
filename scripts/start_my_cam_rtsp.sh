@@ -23,12 +23,13 @@ CLI_PORT=0
 CLI_RES=0
 FG=0
 DO_REBOOT=0
+AI_DIRECT=0
 PIDFILE=/tmp/edgeeye_cam_rtsp.pid
 LOG=/tmp/edgeeye_cam_rtsp.log
 BIN="${EDGEEYE_CAM:-/root/edgeeye_cam}"
 
 usage() {
-	echo "usage: $0 [gc2083|ov5647|dual] [--reboot] [--fg] [--port N] [--res 1080p|720p|480p]"
+	echo "usage: $0 [gc2083|ov5647|dual] [--reboot] [--fg] [--ai-direct] [--port N] [--res 1080p|720p|480p]"
 	echo "  无 positional 参数时使用 $EDGEEYE_CONF"
 	echo "  dual 建议加 --reboot（单摄切双摄后 ION 常不足）"
 }
@@ -52,6 +53,12 @@ edgeeye_args() {
 	if [ -n "$RES" ]; then
 		printf ' --res %s' "$RES"
 	fi
+	if { [ "$AI_DIRECT" = "1" ] ||
+	     { [ "$EDGEEYE_AI" = "1" ] &&
+	       [ "${EDGEEYE_AI_FRAME_SOURCE:-vpss}" = "vpss" ]; }; } &&
+	   [ "$MODE" != "dual" ]; then
+		printf ' --ai-direct'
+	fi
 }
 
 while [ $# -gt 0 ]; do
@@ -67,6 +74,10 @@ while [ $# -gt 0 ]; do
 		;;
 	--fg|--foreground)
 		FG=1
+		shift
+		;;
+	--ai-direct)
+		AI_DIRECT=1
 		shift
 		;;
 	--port)

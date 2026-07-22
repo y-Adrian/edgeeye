@@ -25,10 +25,10 @@ else
 	exit 1
 fi
 
-/root/ai_person_detect.sh --dry-run --watch --interval 2 --cooldown 3 --record
+/root/ai_person_detect.sh --dry-run --frame-source rtsp --watch --interval 2 --cooldown 3 --record
 
 echo "=== watch empty rounds ==="
-/root/ai_person_detect.sh --watch --max-rounds 2 --interval 1
+/root/ai_person_detect.sh --watch --frame-source rtsp --max-rounds 2 --interval 1
 grep -q "max-rounds=2 reached" /tmp/edgeeye_stack.log 2>/dev/null || true
 
 EDIR=/tmp/edgeeye_ai_watch_events

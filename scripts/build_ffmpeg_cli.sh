@@ -1,6 +1,6 @@
 #!/bin/sh
 # build_ffmpeg_cli.sh — 交叉编译静态 ffmpeg（riscv64 musl）
-# 用途：RTSP 录像 / 动检 JPEG / Web 快照 / HLS remux（-c copy）
+# 用途：RTSP 录像 / VPSS NV12→JPEG / 动检 JPEG / Web 快照 / HLS remux
 #
 # 用法（Docker 内，约 10–20 分钟）：
 #   cd edgeeye-duos && source scripts/envsetup.sh
@@ -70,6 +70,7 @@ cd "$SRC"
     --enable-protocol=rtsp \
     --enable-protocol=tcp \
     --enable-demuxer=rtsp \
+    --enable-demuxer=rawvideo \
     --enable-muxer=mp4 \
     --enable-muxer=mov \
     --enable-muxer=image2 \
@@ -77,6 +78,7 @@ cd "$SRC"
     --enable-muxer=mpegts \
     --enable-parser=h264 \
     --enable-decoder=h264 \
+    --enable-decoder=rawvideo \
     --enable-encoder=mjpeg \
     --enable-bsf=h264_mp4toannexb \
     --enable-filter=scale \
@@ -94,8 +96,12 @@ mkdir -p "$EDGEEYE_ROOT/output"
 cp -f "$OUT/bin/ffmpeg" "$STAGE_OUT"
 chmod +x "$STAGE_OUT"
 
-if ! "$STAGE_OUT" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'; then
-	echo "ERROR: staged ffmpeg missing HLS muxer" >&2
+if ! grep -q '^#define CONFIG_HLS_MUXER 1' "$SRC/config.h"; then
+	echo "ERROR: ffmpeg config missing HLS muxer" >&2
+	exit 1
+fi
+if ! grep -q '^#define CONFIG_RAWVIDEO_DEMUXER 1' "$SRC/config.h"; then
+	echo "ERROR: ffmpeg config missing rawvideo demuxer" >&2
 	exit 1
 fi
 

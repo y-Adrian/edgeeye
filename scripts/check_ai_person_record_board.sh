@@ -28,7 +28,7 @@ else
 	exit 1
 fi
 
-/root/ai_person_detect.sh --dry-run --record --clip-sec ${CLIP_SEC}
+/root/ai_person_detect.sh --dry-run --frame-source rtsp --record --clip-sec ${CLIP_SEC}
 
 CDIR=/tmp/edgeeye_ai_clips_test
 EDIR=/tmp/edgeeye_ai_rec_events
@@ -36,7 +36,7 @@ rm -rf \"\$CDIR\" \"\$EDIR\"
 mkdir -p \"\$CDIR\"
 
 # 先真实检测
-/root/ai_person_detect.sh --once --record --clip-sec ${CLIP_SEC} \
+/root/ai_person_detect.sh --once --frame-source rtsp --record --clip-sec ${CLIP_SEC} \
 	--clip-dir \"\$CDIR\" --log-dir \"\$EDIR\" || true
 
 OBJ=0

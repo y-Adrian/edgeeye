@@ -16,15 +16,13 @@ edgeeye_deploy_ffmpeg() {
 	if [ ! -x "$FFMPEG_STAGE" ]; then
 		return 0
 	fi
-	if ! "$FFMPEG_STAGE" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'; then
-		echo "WARN: $FFMPEG_STAGE lacks HLS muxer — skip ffmpeg deploy" >&2
-		echo "      rerun: ./scripts/build_ffmpeg_cli.sh" >&2
-		return 0
-	fi
 	echo "deploy ffmpeg -> /mnt/data/bin/ffmpeg"
 	ssh "$BOARD_USER@$BOARD_IP" "mkdir -p /mnt/data/bin"
 	scp "$FFMPEG_STAGE" "$BOARD_USER@$BOARD_IP:/mnt/data/bin/ffmpeg"
-	ssh "$BOARD_USER@$BOARD_IP" "chmod +x /mnt/data/bin/ffmpeg"
+	ssh "$BOARD_USER@$BOARD_IP" \
+		"chmod +x /mnt/data/bin/ffmpeg &&
+		 /mnt/data/bin/ffmpeg -hide_banner -muxers 2>/dev/null | grep -q '[[:space:]]hls[[:space:]]' &&
+		 /mnt/data/bin/ffmpeg -hide_banner -demuxers 2>/dev/null | grep -q '[[:space:]]rawvideo[[:space:]]'"
 }
 
 if [ -n "$1" ]; then
@@ -53,7 +51,7 @@ for s in \
 	setup_wifi_board.sh check_wifi_board.sh check_lan_live_board.sh \
 	check_ai_event_log_board.sh check_ai_grab_frame_board.sh \
 	check_ai_person_detect_board.sh check_ai_person_record_board.sh \
-	check_ai_person_watch_board.sh \
+	check_ai_person_watch_board.sh check_ai_direct_frame_board.sh \
 	ai_person_detect.sh install_tdl_libs_board.sh \
 	test_my_cam_test.sh test_my_cam_test_phase.sh \
 	test_my_cam_test_phase3.sh test_my_cam_test_phase4.sh test_my_cam_test_phase5.sh \

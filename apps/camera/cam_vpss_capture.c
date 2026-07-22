@@ -177,6 +177,29 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 	return CVI_SUCCESS;
 }
 
+CVI_S32 cam_vpss_capture_grp_once(VPSS_GRP vpss_grp, VPSS_CHN vpss_chn,
+				   const char *path, CVI_S32 timeout_ms)
+{
+	VIDEO_FRAME_INFO_S stFrame;
+	CVI_S32 s32Ret;
+
+	/* memset：清空帧描述，避免失败路径读取未初始化字段。 */
+	memset(&stFrame, 0, sizeof(stFrame));
+	/* CVI_VPSS_GetChnFrame：从已启用深度的 VPSS 通道取得一帧。 */
+	s32Ret = CVI_VPSS_GetChnFrame(vpss_grp, vpss_chn, &stFrame, timeout_ms);
+	if (s32Ret != CVI_SUCCESS)
+		return s32Ret;
+
+	s32Ret = save_nv12_frame(&stFrame, path);
+	/* CVI_VPSS_ReleaseChnFrame：尽快归还 VB，避免阻塞 VENC。 */
+	if (CVI_VPSS_ReleaseChnFrame(vpss_grp, vpss_chn, &stFrame) != CVI_SUCCESS) {
+		CAM_LOG("grp%d chn%d ReleaseChnFrame failed\n", vpss_grp, vpss_chn);
+		if (s32Ret == CVI_SUCCESS)
+			s32Ret = CVI_FAILURE;
+	}
+	return s32Ret;
+}
+
 CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_settle)
 {
 	VIDEO_FRAME_INFO_S stFrame;
@@ -194,6 +217,7 @@ CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_se
 	}
 
 	for (attempt = 1; attempt <= 10; attempt++) {
+		/* CVI_VPSS_GetChnFrame：测试模式下重试等待 VPSS 帧。 */
 		s32Ret = CVI_VPSS_GetChnFrame(vpss_grp, CAM_VPSS_CHN_ID, &stFrame, CAM_FRAME_WAIT_MS);
 		if (s32Ret == CVI_SUCCESS)
 			break;
@@ -205,6 +229,7 @@ CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_se
 		return s32Ret;
 
 	s32Ret = save_nv12_frame(&stFrame, path);
+	/* CVI_VPSS_ReleaseChnFrame：保存后归还测试帧。 */
 	if (CVI_VPSS_ReleaseChnFrame(vpss_grp, CAM_VPSS_CHN_ID, &stFrame) != CVI_SUCCESS)
 		CAM_LOG("grp%d ReleaseChnFrame failed\n", vpss_grp);
 

@@ -29,6 +29,7 @@
 | LT-15 | `test_15_ai_person_detect.sh` | 人检测编排 / TDL 库安装脚本 |
 | LT-16 | `test_16_ai_person_record.sh` | 人检测触发 `--record` 录像 |
 | LT-17 | `test_17_ai_person_watch.sh` | 循环 `--watch` / cooldown / 栈 AI |
+| LT-18 | `test_18_ai_direct_frame.sh` | VPSS 直取 AI 帧，不建立第二路 RTSP |
 
 ### 运行
 

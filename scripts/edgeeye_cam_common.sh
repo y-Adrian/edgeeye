@@ -26,6 +26,7 @@ edgeeye_cfg_default() {
 	EDGEEYE_AI_CLASSES="${EDGEEYE_AI_CLASSES:-person}"
 	EDGEEYE_AI_INTERVAL_SEC="${EDGEEYE_AI_INTERVAL_SEC:-20}"
 	EDGEEYE_AI_RECORD="${EDGEEYE_AI_RECORD:-0}"
+	EDGEEYE_AI_FRAME_SOURCE="${EDGEEYE_AI_FRAME_SOURCE:-vpss}"
 }
 
 edgeeye_cfg_set_key() {
@@ -80,6 +81,12 @@ edgeeye_cfg_set_key() {
 	ai_classes) EDGEEYE_AI_CLASSES="$val" ;;
 	ai_interval_sec) EDGEEYE_AI_INTERVAL_SEC="$val" ;;
 	ai_record) EDGEEYE_AI_RECORD="$val" ;;
+	ai_frame_source)
+		case "$val" in
+		vpss|rtsp) EDGEEYE_AI_FRAME_SOURCE="$val" ;;
+		*) echo "edgeeye_cam.conf: unknown ai_frame_source=$val (use vpss|rtsp)" >&2 ;;
+		esac
+		;;
 	esac
 }
 
@@ -349,6 +356,7 @@ edgeeye_start_ai() {
 
 	AI_ARGS="--watch --interval ${EDGEEYE_AI_INTERVAL_SEC:-20} --cooldown ${EDGEEYE_COOLDOWN_SEC:-60}"
 	AI_ARGS="$AI_ARGS --clip-sec ${EDGEEYE_CLIP_SEC:-30}"
+	AI_ARGS="$AI_ARGS --frame-source ${EDGEEYE_AI_FRAME_SOURCE:-vpss}"
 	if [ "${EDGEEYE_AI_RECORD:-0}" = "1" ]; then
 		AI_ARGS="$AI_ARGS --record"
 	fi

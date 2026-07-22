@@ -36,6 +36,7 @@ COMMON_SRCS := sample_common_sys.c sample_common_platform.c sample_common_vi.c \
                sample_common_vpss.c sample_common_venc.c
 
 CAM_LIB_SRCS := cam_app_context.c \
+                cam_ai_frame_export.c \
                 cam_isp_tuning.c \
                 cam_pipeline_mode.c \
                 cam_vi_bringup.c \

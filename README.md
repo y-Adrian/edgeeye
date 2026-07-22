@@ -71,7 +71,7 @@ vi /root/edgeeye_cam.conf
 | + 动检录像 | `record=1`（默认 cam0），重启栈；勿与 HLS 同时大开 |
 | 上电自启 | `autostart=1`，`./install_autostart.sh` |
 
-AI 目前通过同一路 RTSP 抓取 448×448 检测帧。预览卡顿时先保持 `ai_record=0`、增大 `ai_interval_sec`；详细状态见 [docs/PRODUCT_LITE_AI.md](docs/PRODUCT_LITE_AI.md)。
+AI 默认通过 `edgeeye_cam --ai-direct` 按请求复用 VPSS 帧，再转为 448×448 检测图；不再额外连接 RTSP。`ai_frame_source=rtsp` 仅作回退。详细状态见 [docs/PRODUCT_LITE_AI.md](docs/PRODUCT_LITE_AI.md)。
 
 Mac 预览：
 

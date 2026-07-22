@@ -15,6 +15,7 @@ extern volatile sig_atomic_t g_cam_stop;
 extern int g_cam_verbose;
 extern int g_cam_rtsp_port;
 extern char g_cam_rtsp_url[128];
+extern CVI_BOOL g_cam_ai_direct;
 extern CVI_BOOL g_cam_dual_media_mode;
 extern CVI_BOOL g_cam_vpss_up;
 extern int g_cam_vpss_grp_mask;

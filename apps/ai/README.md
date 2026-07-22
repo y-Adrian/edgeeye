@@ -22,6 +22,6 @@ tail -1 /mnt/sd/events/events.ndjson   # 或 /mnt/data/events/
 {"ts":1710000000,"class":"person","score":0.9100,"source":"inject","cam":"cam0"}
 ```
 
-后续：`ai_grab_frame` → `ai_person_detect.sh --once|--watch`（可选 `--record`）→ `ai_event_log` / `record_clip.sh`；`ai=1` 时由 `run_edgeeye_stack.sh` 拉起。
+当前链路：`ai_grab_frame --source vpss` → `ai_person_detect.sh --once|--watch`（可选 `--record`）→ `ai_event_log` / `record_clip.sh`；`ai=1` 时由 `run_edgeeye_stack.sh` 拉起。
 
-默认偏保守（`ai_interval_sec=20`、`ai_record=0`），减轻与 RTSP 预览抢流。
+VPSS 直取通过 `edgeeye_cam --ai-direct` 按请求导出 NV12，不再建立第二个 RTSP 客户端；`--source rtsp` 保留为回退。默认仍偏保守（`ai_interval_sec=20`、`ai_record=0`）。
