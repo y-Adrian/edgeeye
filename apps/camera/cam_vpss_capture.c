@@ -48,6 +48,24 @@ CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSrcSize,
 	astVpssChnAttr[CAM_VPSS_CHN_ID].stNormalize.bEnable = CVI_FALSE;
 
 	abChnEnable[CAM_VPSS_CHN_ID] = CVI_TRUE;
+	if (g_cam_ai_direct && vpss_grp == CAM_VPSS_GRP_ID) {
+		/*
+		 * CHN1 专供 AI：硬件缩放到模型尺寸并保留一帧深度。
+		 * CHN0 继续只绑定 VENC，避免 GetChnFrame 干扰编码队列。
+		 */
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].u32Width = CAM_AI_FRAME_WIDTH;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].u32Height = CAM_AI_FRAME_HEIGHT;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].enVideoFormat = VIDEO_FORMAT_LINEAR;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].enPixelFormat = SAMPLE_PIXEL_FORMAT;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stFrameRate.s32SrcFrameRate = -1;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stFrameRate.s32DstFrameRate = -1;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].u32Depth = 1;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].bMirror = CVI_FALSE;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].bFlip = CVI_FALSE;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stAspectRatio.enMode = ASPECT_RATIO_NONE;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stNormalize.bEnable = CVI_FALSE;
+		abChnEnable[CAM_VPSS_AI_CHN_ID] = CVI_TRUE;
+	}
 
 	s32Ret = SAMPLE_COMM_VPSS_Init(vpss_grp, abChnEnable, &stVpssGrpAttr, astVpssChnAttr);
 	if (s32Ret != CVI_SUCCESS) {
@@ -78,6 +96,10 @@ CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSrcSize,
 	else
 		CAM_LOG("VPSS grp%d %ux%u ready\n", vpss_grp,
 		       stOut.u32Width, stOut.u32Height);
+	if (g_cam_ai_direct && vpss_grp == CAM_VPSS_GRP_ID)
+		CAM_LOG("VPSS grp%d chn%d AI %dx%d depth=1 ready\n",
+		       vpss_grp, CAM_VPSS_AI_CHN_ID,
+		       CAM_AI_FRAME_WIDTH, CAM_AI_FRAME_HEIGHT);
 	return CVI_SUCCESS;
 }
 
@@ -296,6 +318,8 @@ void cam_vpss_teardown(void)
 		return;
 
 	abChnEnable[CAM_VPSS_CHN_ID] = CVI_TRUE;
+	if (g_cam_ai_direct)
+		abChnEnable[CAM_VPSS_AI_CHN_ID] = CVI_TRUE;
 	for (cam = CAM_MAX_SENSORS - 1; cam >= 0; cam--) {
 		if (!(g_cam_vpss_grp_mask & (1 << cam)))
 			continue;

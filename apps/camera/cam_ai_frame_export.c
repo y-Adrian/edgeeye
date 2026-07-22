@@ -8,7 +8,6 @@
 #include "cam_ai_frame_export.h"
 #include "cam_app_context.h"
 #include "cam_log.h"
-#include "cam_output_res.h"
 #include "cam_pipeline_config.h"
 #include "cam_vpss_capture.h"
 
@@ -49,13 +48,11 @@ static CVI_S32 export_one_frame(void)
 	SIZE_S size;
 	CVI_S32 ret;
 
-	/* cam_output_res_to_size：取得当前 VPSS/RTSP 输出尺寸。 */
-	ret = cam_output_res_to_size(cam_output_res_get(), &size);
-	if (ret != CVI_SUCCESS)
-		return ret;
+	size.u32Width = CAM_AI_FRAME_WIDTH;
+	size.u32Height = CAM_AI_FRAME_HEIGHT;
 
-	/* cam_vpss_capture_grp_once：短暂持有 ch0 帧并写入临时 NV12。 */
-	ret = cam_vpss_capture_grp_once(CAM_VPSS_GRP_ID, CAM_VPSS_CHN_ID,
+	/* cam_vpss_capture_grp_once：从 AI 专用 CHN1 取得 448×448 NV12。 */
+	ret = cam_vpss_capture_grp_once(CAM_VPSS_GRP_ID, CAM_VPSS_AI_CHN_ID,
 					CAM_AI_FRAME_RAW_TMP, 1000);
 	if (ret != CVI_SUCCESS)
 		return ret;

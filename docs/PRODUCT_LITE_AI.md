@@ -116,13 +116,15 @@ ls /mnt/sd/clips/   # 或 /mnt/data/clips/
 流程变为：
 
 ```text
-VPSS ch0 --按请求短暂 Get/Release--> NV12 --本地 scale/JPEG--> MobileDet
-     └---------------------------> VENC/RTSP 预览
+VPSS CHN0 ---------------------------> VENC/RTSP 预览
+     CHN1 (448×448, depth=1) --按请求 Get/Release--> NV12/JPEG --> MobileDet
 ```
 
 `ai_frame_source=rtsp` 保留为兼容/回退路径。
 
-板上验收结果：连续 3 次 VPSS 取帧后，cam0 在 3 秒内仍输出 **84 帧（1280×720）**；MobileDet 能读取直取生成的 448×448 JPEG。
+CHN0 与 CHN1 分离，避免 AI 持帧影响 VENC 编码队列。
+
+板上验收：CHN1 输出 448×448 NV12（301,056 bytes）；连续 3 次取帧后，cam0 在 3 秒窗口仍读取 79 帧（1280×720）。
 
 ## 板上已具备的 AI 资产（摸底）
 
