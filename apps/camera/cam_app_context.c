@@ -8,6 +8,7 @@ volatile sig_atomic_t g_cam_stop;
 int g_cam_verbose;
 int g_cam_rtsp_port = 8554;
 char g_cam_rtsp_url[128] = CAM_DUAL_RTSP_URL0;
+CVI_BOOL g_cam_ai_direct;
 CVI_BOOL g_cam_dual_media_mode;
 CVI_BOOL g_cam_vpss_up;
 int g_cam_vpss_grp_mask;

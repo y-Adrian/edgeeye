@@ -41,7 +41,14 @@ for t in \
 	"$DIR/test_08_suite_profiles.sh" \
 	"$DIR/test_09_motion_record_config.sh" \
 	"$DIR/test_10_web_hls_config.sh" \
-	"$DIR/test_11_wifi_docs.sh"
+	"$DIR/test_11_wifi_docs.sh" \
+	"$DIR/test_12_lite_gc2083_config.sh" \
+	"$DIR/test_13_ai_event_log.sh" \
+	"$DIR/test_14_ai_grab_frame.sh" \
+	"$DIR/test_15_ai_person_detect.sh" \
+	"$DIR/test_16_ai_person_record.sh" \
+	"$DIR/test_17_ai_person_watch.sh" \
+	"$DIR/test_18_ai_direct_frame.sh"
 do
 	run_one "$t"
 done

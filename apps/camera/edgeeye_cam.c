@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cam_ai_frame_export.h"
 #include "cam_app_context.h"
 #include "cam_log.h"
 #include "cam_pipeline_mode.h"
@@ -36,6 +37,7 @@ static void usage(const char *prog)
 	printf("  --dual            GC2083 + OV5647 同时直播 cam0/cam1\n");
 	printf("  -P, --port N      RTSP 端口 (default 8554)\n");
 	printf("  -r, --res RES     输出分辨率: 1080p|720p|480p (default 1080p)\n");
+	printf("  --ai-direct       开启 VPSS 按需导帧（单摄，供 AI 使用）\n");
 	printf("  -v                VI/ISP/VPSS 调试日志\n");
 	printf("\nMac 预览:\n");
 	printf("  ffplay -rtsp_transport tcp rtsp://192.168.42.1:8554/cam0\n");
@@ -104,6 +106,10 @@ int main(int argc, char **argv)
 			g_cam_verbose = 1;
 			continue;
 		}
+		if (strcmp(argv[opt], "--ai-direct") == 0) {
+			g_cam_ai_direct = CVI_TRUE;
+			continue;
+		}
 		if ((strcmp(argv[opt], "-r") == 0 || strcmp(argv[opt], "--res") == 0) &&
 		    opt + 1 < argc) {
 			if (cam_output_res_parse(argv[++opt], &res) != CVI_SUCCESS) {
@@ -125,6 +131,10 @@ int main(int argc, char **argv)
 
 	if (layout == CAM_LAYOUT_SINGLE)
 		bringup.enable_dual_vpss = CVI_FALSE;
+	if (layout == CAM_LAYOUT_DUAL && g_cam_ai_direct) {
+		printf("edgeeye_cam: --ai-direct currently supports single camera only\n");
+		return 1;
+	}
 
 	cam_output_res_set(res);
 
@@ -156,11 +166,23 @@ int main(int argc, char **argv)
 
 	print_preview_urls(g_cam_rtsp_port, layout, sensor);
 
+	if (g_cam_ai_direct) {
+		/* cam_ai_frame_export_start：启动 VPSS 按需导帧线程。 */
+		s32Ret = cam_ai_frame_export_start();
+		if (s32Ret != CVI_SUCCESS) {
+			printf("edgeeye_cam: AI direct exporter failed %#x\n", s32Ret);
+			cam_vi_bringup_deinit();
+			return 1;
+		}
+	}
+
 	/* stream_sec <= 0：持续推流直到 Ctrl+C */
 	s32Ret = cam_stream_rtsp_run(0, NULL);
 	if (s32Ret != CVI_SUCCESS && !g_run_stop)
 		printf("edgeeye_cam: stream ended %#x\n", s32Ret);
 
+	/* cam_ai_frame_export_stop：归还导帧线程可能持有的 VPSS 帧。 */
+	cam_ai_frame_export_stop();
 	cam_vi_bringup_deinit();
 	printf("edgeeye_cam: stopped\n");
 	return s32Ret == CVI_SUCCESS || g_run_stop ? 0 : 1;

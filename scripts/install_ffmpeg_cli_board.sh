@@ -23,13 +23,6 @@ if [ ! -x "$FFMPEG" ]; then
 	exit 1
 fi
 
-if ! "$FFMPEG" -hide_banner -muxers 2>/dev/null | grep -qE '[[:space:]]hls[[:space:]]'; then
-	echo "ERROR: $FFMPEG has no HLS muxer (old build?)" >&2
-	echo "  rm -rf /tmp/debris_ffmpeg_out /tmp/ffmpeg-6.1.1 output/ffmpeg-riscv64-static" >&2
-	echo "  ./scripts/build_ffmpeg_cli.sh" >&2
-	exit 1
-fi
-
 echo "install $FFMPEG -> board:/mnt/data/bin/ffmpeg"
 file "$FFMPEG"
 ssh "$BOARD_USER@$BOARD_IP" "mkdir -p /mnt/data/bin"
@@ -38,6 +31,8 @@ ssh "$BOARD_USER@$BOARD_IP" "chmod +x /mnt/data/bin/ffmpeg"
 
 ssh "$BOARD_USER@$BOARD_IP" \
 	'/mnt/data/bin/ffmpeg -hide_banner -muxers 2>/dev/null | grep hls || { echo "board: ffmpeg still missing HLS"; exit 1; }'
+ssh "$BOARD_USER@$BOARD_IP" \
+	'/mnt/data/bin/ffmpeg -hide_banner -demuxers 2>/dev/null | grep rawvideo || { echo "board: ffmpeg missing rawvideo"; exit 1; }'
 
 cat <<'EOF'
 

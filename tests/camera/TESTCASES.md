@@ -23,6 +23,13 @@
 | LT-06 | `test_06_golden_logs.sh` | fixture 日志满足板上验收 grep 模式 |
 | LT-07 | `test_07_stream_configs.sh` | 混搭双摄 sensor ini 与 `make` 部署包 |
 | LT-11 | `test_11_wifi_docs.sh` | WiFi 文档/脚本/示例 conf 存在性 |
+| LT-12 | `test_12_lite_gc2083_config.sh` | Lite 默认 `mode=gc2083`、AI 路线文档 |
+| LT-13 | `test_13_ai_event_log.sh` | `ai_event_log` 源码与 conf `ai=` 占位 |
+| LT-14 | `test_14_ai_grab_frame.sh` | `ai_grab_frame` RTSP→JPEG 取帧 |
+| LT-15 | `test_15_ai_person_detect.sh` | 人检测编排 / TDL 库安装脚本 |
+| LT-16 | `test_16_ai_person_record.sh` | 人检测触发 `--record` 录像 |
+| LT-17 | `test_17_ai_person_watch.sh` | 循环 `--watch` / cooldown / 栈 AI |
+| LT-18 | `test_18_ai_direct_frame.sh` | VPSS 直取 AI 帧，不建立第二路 RTSP |
 
 ### 运行
 

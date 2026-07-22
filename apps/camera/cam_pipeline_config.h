@@ -6,6 +6,9 @@
 
 #define CAM_VPSS_GRP_ID            0
 #define CAM_VPSS_CHN_ID            VPSS_CHN0
+#define CAM_VPSS_AI_CHN_ID         VPSS_CHN1
+#define CAM_AI_FRAME_WIDTH         448
+#define CAM_AI_FRAME_HEIGHT        448
 #define CAM_VENC_CHN_ID            0
 #define CAM_FRAME_WAIT_MS          3000
 #define CAM_ISP_SETTLE_SEC         2

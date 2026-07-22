@@ -4,7 +4,7 @@ EDGEEYE_CONF="${EDGEEYE_CONF:-/root/edgeeye_cam.conf}"
 BOARD_DIR="${BOARD_DIR:-/root}"
 
 edgeeye_cfg_default() {
-	EDGEEYE_MODE="${EDGEEYE_MODE:-dual}"
+	EDGEEYE_MODE="${EDGEEYE_MODE:-gc2083}"
 	EDGEEYE_PORT="${EDGEEYE_PORT:-8554}"
 	EDGEEYE_RES="${EDGEEYE_RES:-720p}"
 	EDGEEYE_BOOT_DELAY="${EDGEEYE_BOOT_DELAY:-8}"
@@ -21,6 +21,12 @@ edgeeye_cfg_default() {
 	EDGEEYE_WEB_LIVE="${EDGEEYE_WEB_LIVE:-hls}"
 	EDGEEYE_SNAPSHOT_SEC="${EDGEEYE_SNAPSHOT_SEC:-3}"
 	EDGEEYE_AUTOSTART="${EDGEEYE_AUTOSTART:-0}"
+	EDGEEYE_AI="${EDGEEYE_AI:-0}"
+	EDGEEYE_AI_LOG_DIR="${EDGEEYE_AI_LOG_DIR:-}"
+	EDGEEYE_AI_CLASSES="${EDGEEYE_AI_CLASSES:-person}"
+	EDGEEYE_AI_INTERVAL_SEC="${EDGEEYE_AI_INTERVAL_SEC:-20}"
+	EDGEEYE_AI_RECORD="${EDGEEYE_AI_RECORD:-0}"
+	EDGEEYE_AI_FRAME_SOURCE="${EDGEEYE_AI_FRAME_SOURCE:-vpss}"
 }
 
 edgeeye_cfg_set_key() {
@@ -70,6 +76,17 @@ edgeeye_cfg_set_key() {
 		;;
 	snapshot_sec) EDGEEYE_SNAPSHOT_SEC="$val" ;;
 	autostart) EDGEEYE_AUTOSTART="$val" ;;
+	ai) EDGEEYE_AI="$val" ;;
+	ai_log_dir) EDGEEYE_AI_LOG_DIR="$val" ;;
+	ai_classes) EDGEEYE_AI_CLASSES="$val" ;;
+	ai_interval_sec) EDGEEYE_AI_INTERVAL_SEC="$val" ;;
+	ai_record) EDGEEYE_AI_RECORD="$val" ;;
+	ai_frame_source)
+		case "$val" in
+		vpss|rtsp) EDGEEYE_AI_FRAME_SOURCE="$val" ;;
+		*) echo "edgeeye_cam.conf: unknown ai_frame_source=$val (use vpss|rtsp)" >&2 ;;
+		esac
+		;;
 	esac
 }
 
@@ -312,6 +329,58 @@ edgeeye_stop_recording() {
 		kill "$(cat /tmp/motion_recorder.pid)" 2>/dev/null || true
 		rm -f /tmp/motion_recorder.pid
 	fi
+}
+
+edgeeye_start_ai() {
+	log="${1:-/tmp/edgeeye_stack.log}"
+
+	[ "$EDGEEYE_AI" = "1" ] || return 0
+	[ -x "$BOARD_DIR/ai_person_detect.sh" ] || {
+		echo "skip ai: no ai_person_detect.sh" >>"$log"
+		return 0
+	}
+	[ -x "$BOARD_DIR/ai_grab_frame" ] || {
+		echo "skip ai: no ai_grab_frame" >>"$log"
+		return 0
+	}
+
+	if ! edgeeye_wait_rtsp_ready 90 cam0; then
+		echo "skip ai: RTSP cam0 not ready" >>"$log"
+		return 0
+	fi
+
+	if [ -f /tmp/ai_person_detect.pid ] && kill -0 "$(cat /tmp/ai_person_detect.pid)" 2>/dev/null; then
+		echo "ai_person_detect already running" >>"$log"
+		return 0
+	fi
+
+	AI_ARGS="--watch --interval ${EDGEEYE_AI_INTERVAL_SEC:-20} --cooldown ${EDGEEYE_COOLDOWN_SEC:-60}"
+	AI_ARGS="$AI_ARGS --clip-sec ${EDGEEYE_CLIP_SEC:-30}"
+	AI_ARGS="$AI_ARGS --frame-source ${EDGEEYE_AI_FRAME_SOURCE:-vpss}"
+	if [ "${EDGEEYE_AI_RECORD:-0}" = "1" ]; then
+		AI_ARGS="$AI_ARGS --record"
+	fi
+	if [ -n "$EDGEEYE_AI_LOG_DIR" ]; then
+		AI_ARGS="$AI_ARGS --log-dir $EDGEEYE_AI_LOG_DIR"
+	fi
+	if [ -n "$EDGEEYE_CLIP_DIR" ]; then
+		AI_ARGS="$AI_ARGS --clip-dir $EDGEEYE_CLIP_DIR"
+	fi
+
+	# nohup 后台循环人检；日志并入 stack log
+	# shellcheck disable=SC2086
+	nohup sh "$BOARD_DIR/ai_person_detect.sh" $AI_ARGS >>"$log" 2>&1 &
+	echo $! > /tmp/ai_person_detect.pid
+	echo "ai_person_detect pid $(cat /tmp/ai_person_detect.pid) $AI_ARGS" >>"$log"
+}
+
+edgeeye_stop_ai() {
+	if [ -f /tmp/ai_person_detect.pid ]; then
+		kill "$(cat /tmp/ai_person_detect.pid)" 2>/dev/null || true
+		rm -f /tmp/ai_person_detect.pid
+	fi
+	# 兜底：按脚本名杀（避免 pid 文件丢失）
+	pkill -f 'ai_person_detect.sh --watch' 2>/dev/null || true
 }
 
 edgeeye_stop_hls() {

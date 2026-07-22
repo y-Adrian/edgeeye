@@ -24,6 +24,7 @@ static CVI_S32 rtsp_setup_single(void)
 
 	cam_output_res_effective(&stSrc, &stOut, &enOutPic);
 
+	/* CHN0 只绑定 VENC，保持 depth=0；AI direct 使用独立 CHN1。 */
 	s32Ret = cam_vpss_init_single(&stSrc, &stOut, 0);
 	if (s32Ret != CVI_SUCCESS)
 		return s32Ret;

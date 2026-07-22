@@ -13,6 +13,8 @@ CVI_S32 cam_vpss_init_single(const SIZE_S *pstSrcSize, const SIZE_S *pstOutSize,
 			     CVI_U32 depth);
 CVI_S32 cam_vpss_bind_cam(int cam_idx);
 CVI_S32 cam_vpss_bind_single(void);
+CVI_S32 cam_vpss_capture_grp_once(VPSS_GRP vpss_grp, VPSS_CHN vpss_chn,
+				   const char *path, CVI_S32 timeout_ms);
 CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_settle);
 CVI_S32 cam_vpss_capture_single(const char *path);
 VPSS_GRP cam_vpss_dual_grp(int cam);

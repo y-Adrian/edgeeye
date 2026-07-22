@@ -48,6 +48,24 @@ CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSrcSize,
 	astVpssChnAttr[CAM_VPSS_CHN_ID].stNormalize.bEnable = CVI_FALSE;
 
 	abChnEnable[CAM_VPSS_CHN_ID] = CVI_TRUE;
+	if (g_cam_ai_direct && vpss_grp == CAM_VPSS_GRP_ID) {
+		/*
+		 * CHN1 专供 AI：硬件缩放到模型尺寸并保留一帧深度。
+		 * CHN0 继续只绑定 VENC，避免 GetChnFrame 干扰编码队列。
+		 */
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].u32Width = CAM_AI_FRAME_WIDTH;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].u32Height = CAM_AI_FRAME_HEIGHT;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].enVideoFormat = VIDEO_FORMAT_LINEAR;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].enPixelFormat = SAMPLE_PIXEL_FORMAT;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stFrameRate.s32SrcFrameRate = -1;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stFrameRate.s32DstFrameRate = -1;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].u32Depth = 1;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].bMirror = CVI_FALSE;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].bFlip = CVI_FALSE;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stAspectRatio.enMode = ASPECT_RATIO_NONE;
+		astVpssChnAttr[CAM_VPSS_AI_CHN_ID].stNormalize.bEnable = CVI_FALSE;
+		abChnEnable[CAM_VPSS_AI_CHN_ID] = CVI_TRUE;
+	}
 
 	s32Ret = SAMPLE_COMM_VPSS_Init(vpss_grp, abChnEnable, &stVpssGrpAttr, astVpssChnAttr);
 	if (s32Ret != CVI_SUCCESS) {
@@ -78,6 +96,10 @@ CVI_S32 cam_vpss_init_grp(VPSS_GRP vpss_grp, const SIZE_S *pstSrcSize,
 	else
 		CAM_LOG("VPSS grp%d %ux%u ready\n", vpss_grp,
 		       stOut.u32Width, stOut.u32Height);
+	if (g_cam_ai_direct && vpss_grp == CAM_VPSS_GRP_ID)
+		CAM_LOG("VPSS grp%d chn%d AI %dx%d depth=1 ready\n",
+		       vpss_grp, CAM_VPSS_AI_CHN_ID,
+		       CAM_AI_FRAME_WIDTH, CAM_AI_FRAME_HEIGHT);
 	return CVI_SUCCESS;
 }
 
@@ -177,6 +199,29 @@ static CVI_S32 save_nv12_frame(const VIDEO_FRAME_INFO_S *pstFrame, const char *p
 	return CVI_SUCCESS;
 }
 
+CVI_S32 cam_vpss_capture_grp_once(VPSS_GRP vpss_grp, VPSS_CHN vpss_chn,
+				   const char *path, CVI_S32 timeout_ms)
+{
+	VIDEO_FRAME_INFO_S stFrame;
+	CVI_S32 s32Ret;
+
+	/* memset：清空帧描述，避免失败路径读取未初始化字段。 */
+	memset(&stFrame, 0, sizeof(stFrame));
+	/* CVI_VPSS_GetChnFrame：从已启用深度的 VPSS 通道取得一帧。 */
+	s32Ret = CVI_VPSS_GetChnFrame(vpss_grp, vpss_chn, &stFrame, timeout_ms);
+	if (s32Ret != CVI_SUCCESS)
+		return s32Ret;
+
+	s32Ret = save_nv12_frame(&stFrame, path);
+	/* CVI_VPSS_ReleaseChnFrame：尽快归还 VB，避免阻塞 VENC。 */
+	if (CVI_VPSS_ReleaseChnFrame(vpss_grp, vpss_chn, &stFrame) != CVI_SUCCESS) {
+		CAM_LOG("grp%d chn%d ReleaseChnFrame failed\n", vpss_grp, vpss_chn);
+		if (s32Ret == CVI_SUCCESS)
+			s32Ret = CVI_FAILURE;
+	}
+	return s32Ret;
+}
+
 CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_settle)
 {
 	VIDEO_FRAME_INFO_S stFrame;
@@ -194,6 +239,7 @@ CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_se
 	}
 
 	for (attempt = 1; attempt <= 10; attempt++) {
+		/* CVI_VPSS_GetChnFrame：测试模式下重试等待 VPSS 帧。 */
 		s32Ret = CVI_VPSS_GetChnFrame(vpss_grp, CAM_VPSS_CHN_ID, &stFrame, CAM_FRAME_WAIT_MS);
 		if (s32Ret == CVI_SUCCESS)
 			break;
@@ -205,6 +251,7 @@ CVI_S32 cam_vpss_capture_grp(VPSS_GRP vpss_grp, const char *path, CVI_BOOL do_se
 		return s32Ret;
 
 	s32Ret = save_nv12_frame(&stFrame, path);
+	/* CVI_VPSS_ReleaseChnFrame：保存后归还测试帧。 */
 	if (CVI_VPSS_ReleaseChnFrame(vpss_grp, CAM_VPSS_CHN_ID, &stFrame) != CVI_SUCCESS)
 		CAM_LOG("grp%d ReleaseChnFrame failed\n", vpss_grp);
 
@@ -271,6 +318,8 @@ void cam_vpss_teardown(void)
 		return;
 
 	abChnEnable[CAM_VPSS_CHN_ID] = CVI_TRUE;
+	if (g_cam_ai_direct)
+		abChnEnable[CAM_VPSS_AI_CHN_ID] = CVI_TRUE;
 	for (cam = CAM_MAX_SENSORS - 1; cam >= 0; cam--) {
 		if (!(g_cam_vpss_grp_mask & (1 << cam)))
 			continue;
